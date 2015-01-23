@@ -1,0 +1,28 @@
+
+
+	GPIO_1( 6)	<=	(SW(0) XOR (c_activateServo( 0) AND s_pwmSignal( 0)))	-- S1
+	GPIO_0(24)	<=	(SW(0) XOR (c_activateServo( 1) AND s_pwmSignal( 1)))	-- S2
+	GPIO_1( 9)	<=	(SW(0) XOR (c_activateServo( 2) AND s_pwmSignal( 2)))	-- S3
+	GPIO_0(25)	<=	(SW(0) XOR (c_activateServo( 3) AND s_pwmSignal( 3)))	-- S4
+	GPIO_1( 8)	<=	(SW(0) XOR (c_activateServo( 4) AND s_pwmSignal( 4)))	-- S5
+	GPIO_0(23)	<=	(SW(0) XOR (c_activateServo( 5) AND s_pwmSignal( 5)))	-- S6
+	GPIO_1(11)	<=	(SW(0) XOR (c_activateServo( 6) AND s_pwmSignal( 6)))	-- S7
+	GPIO_0(22)	<=	(SW(0) XOR (c_activateServo( 7) AND s_pwmSignal( 7)))	-- S8
+	GPIO_1(10)	<=	(SW(0) XOR (c_activateServo( 8) AND s_pwmSignal( 8)))	-- S9
+	GPIO_0(21)	<=	(SW(0) XOR (c_activateServo( 9) AND s_pwmSignal( 9)))	-- S10
+	GPIO_1(13)	<=	(SW(0) XOR (c_activateServo(10) AND s_pwmSignal(10)))	-- S11
+	GPIO_0(20)	<=	(SW(0) XOR (c_activateServo(11) AND s_pwmSignal(11)))	-- S12
+	GPIO_1(12)	<=	(SW(0) XOR (c_activateServo(12) AND s_pwmSignal(12)))	-- S13
+	GPIO_0(19)	<=	(SW(0) XOR (c_activateServo(13) AND s_pwmSignal(13)))	-- S14
+	GPIO_1(14)	<=	(SW(0) XOR (c_activateServo(14) AND s_pwmSignal(14)))	-- S15
+	GPIO_0(18)	<=	(SW(0) XOR (c_activateServo(15) AND s_pwmSignal(15)))	-- S16
+	GPIO_1(22)	<=	(SW(0) XOR (c_activateServo(16) AND s_pwmSignal(16)))	-- S17
+	GPIO_0( 8)	<=	(SW(0) XOR (c_activateServo(17) AND s_pwmSignal(17)))	-- S18
+	GPIO_1(25)	<=	(SW(0) XOR (c_activateServo(18) AND s_pwmSignal(18)))	-- S19
+	GPIO_0( 9)	<=	(SW(0) XOR (c_activateServo(19) AND s_pwmSignal(19)))	-- S20
+	GPIO_1(24)	<=	(SW(0) XOR (c_activateServo(20) AND s_pwmSignal(20)))	-- S21
+	GPIO_0( 7)	<=	(SW(0) XOR (c_activateServo(21) AND s_pwmSignal(21)))	-- S22
+	GPIO_1(27)	<=	(SW(0) XOR (c_activateServo(22) AND s_pwmSignal(22)))	-- S23
+	GPIO_0( 6)	<=	(SW(0) XOR (c_activateServo(23) AND s_pwmSignal(23)))	-- S24
+	GPIO_1(26)	<=	(SW(0) XOR (c_activateServo(24) AND s_pwmSignal(24)))	-- S25
+	GPIO_0( 5)	<=	(SW(0) XOR (c_activateServo(25) AND s_pwmSignal(25)))	-- S26
