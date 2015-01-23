@@ -16,13 +16,13 @@ use IEEE.numeric_std.all;
 entity counter is
 
 	generic (
-		maxValue_g     : integer -- maximum count value
+		maxValue_g     : integer; -- maximum count value
+
+		initialValue : integer := 0 -- the initial value after reset
 	);
 	port(
 		CLK          : in  std_logic;
 		RESET_n      : in  std_logic;
-
-		initialValue : integer := 0; -- the initial value after reset
 
 		TC           : out integer range 0 to maxValue_g := initialValue
 	);

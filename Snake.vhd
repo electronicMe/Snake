@@ -152,7 +152,7 @@ architecture Snake_a of Snake is
 																			'0',	-- S23
 																			'0',	-- S24
 																			'1',	-- S25
-																			'1'		-- S26
+																			'1'	-- S26
 																		);
 
 	-- Each '1' bit activates the corresponding counter. Counters in ascending order: Counter 0 to Counter 25
@@ -188,7 +188,7 @@ architecture Snake_a of Snake is
 																		);
 
 	-- The initial value of each servo counter. Causes an phase shift. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_initCounterVals : INT_ARRAY(numServos - 1 downto 0) := 	( 	0,		-- S1
+	constant s_initCounterVals : INT_ARRAY(numServos - 1 downto 0) := 	( 	0,		-- S1
 																			0,		-- S2
 																			0,	-- S3
 																			0,	-- S4
@@ -320,7 +320,7 @@ begin
 	-- PRESCALER                                                              --
 	--========================================================================--
 	
-	prescaler: entity work.prescaler(prescaler_a)	generic map (scale		=> 80000)
+	prescaler: entity work.prescaler(prescaler_a)	generic map (scale		=> 150000)
 													port map    (CLK 		=> CLOCK_50,
 																 RESET_n	=> s_RESET,
 																 TICK		=> s_TICK
@@ -334,10 +334,10 @@ begin
 	
 	GEN_COUNTERS: for i in 0 to (numServos - 1) generate
 
-		counter_x: entity work.counter(counter_a)	generic map (maxValue_g		=> c_counterMaxValue)
+		counter_x: entity work.counter(counter_a)	generic map (maxValue_g		=> c_counterMaxValue,
+																 initialValue	=> s_initCounterVals(i))
 													port map	(CLK			=> s_TICK,--((s_TICK AND s_activateCounter(i)) OR s_step),
 																 RESET_n		=> s_RESET,
-																 initialValue	=> s_initCounterVals(i),
 																 TC				=> s_counter(i)
 																);
 

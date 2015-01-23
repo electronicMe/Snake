@@ -28,11 +28,11 @@ port (
 	DUTYCYCLE         : in integer;
 	
 	PWMOut            : out std_logic;
-	reduction_g     : integer   :=        0; -- typ        0, in ns, must be smaller than ((maxOn_g - minOn_g) / 2)
+	reduction_g     : in integer   :=        0; -- typ        0, in ns, must be smaller than ((maxOn_g - minOn_g) / 2)
 											 -- calculate damping of the altitude:    reduction_g = (((maxOn_g - minOn_g) / 200) * dumpingInPercent)
 	
-	INVERT_HORN       : std_logic := '0'; -- typ '0', if '1', servo horn angle will be inverted
-	CENTER_CORRECTION : integer   :=  0   -- typ 0, in ns, used to correct the center of the servo horn. Modifies the on periode additive.
+	INVERT_HORN       : in std_logic := '0'; -- typ '0', if '1', servo horn angle will be inverted
+	CENTER_CORRECTION : in integer   :=  0   -- typ 0, in ns, used to correct the center of the servo horn. Modifies the on periode additive.
 );
 end PWMServo;
 
