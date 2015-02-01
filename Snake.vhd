@@ -79,33 +79,33 @@ architecture Snake_a of Snake is
 
 	-- Contains the GPIO port of each servo. Ports lower than 100 mean GPIO_0 and higher than or
 	-- equal to 100 mean GPIO_1
-	constant c_servoPorts : INT_ARRAY(numServos - 1 downto 0) :=	(	106,	-- S1
-																																		024,	-- S2
-																																		109,	-- S3
-																																		025,	-- S4
-																																		108,	-- S5
-																																		023,	-- S6
-																																		111,	-- S7
-																																		022,	-- S8
-																																		110,	-- S9
-																																		021,	-- S10
-																																		113,	-- S11
-																																		020,	-- S12
-																																		112,	-- S13
-																																		019,	-- S14
-																																		114,	-- S15
-																																		018,	-- S16
-																																		122,	-- S17
-																																		008,	-- S18
-																																		125,	-- S19
-																																		009,	-- S20
-																																		124,	-- S21
-																																		007,	-- S22
-																																		127,	-- S23
-																																		006,	-- S24
-																																		126,	-- S25
-																																		005		-- S26
-																																	);
+	constant c_servoPorts : INT_ARRAY(numServos - 1 downto 0) :=  (   106,	-- S1
+																		024,	-- S2
+																		109,	-- S3
+																		025,	-- S4
+																		108,	-- S5
+																		023,	-- S6
+																		111,	-- S7
+																		022,	-- S8
+																		110,	-- S9
+																		021,	-- S10
+																		113,	-- S11
+																		020,	-- S12
+																		112,	-- S13
+																		019,	-- S14
+																		114,	-- S15
+																		018,	-- S16
+																		122,	-- S17
+																		008,	-- S18
+																		125,	-- S19
+																		009,	-- S20
+																		124,	-- S21
+																		007,	-- S22
+																		127,	-- S23
+																		006,	-- S24
+																		126,	-- S25
+																		005		-- S26
+																	);
 
 
 
@@ -122,123 +122,123 @@ architecture Snake_a of Snake is
 
 
 	-- Each '1' bit activates the corresponding servo. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_activateServo   : std_logic_vector(numServos - 1 downto 0) :=(	'1',	-- S1
-																																						'1',	-- S2
-																																						'0',	-- S3
-																																						'0',	-- S4
-																																						'1',	-- S5
-																																						'1',	-- S6
-																																						'0',	-- S7
-																																						'0',	-- S8
-																																						'1',	-- S9
-																																						'1',	-- S10
-																																						'0',	-- S11
-																																						'0',	-- S12
-																																						'1',	-- S13
-																																						'1',	-- S14
-																																						'0',	-- S15
-																																						'0',	-- S16
-																																						'1',	-- S17
-																																						'1',	-- S18
-																																						'0',	-- S19
-																																						'0',	-- S20
-																																						'1',	-- S21
-																																						'1',	-- S22
-																																						'0',	-- S23
-																																						'0',	-- S24
-																																						'1',	-- S25
-																																						'1'	-- S26
-																																					);
+	signal s_activateServo   : std_logic_vector(numServos - 1 downto 0) := ('1',	-- S1
+																			'1',	-- S2
+																			'0',	-- S3
+																			'0',	-- S4
+																			'1',	-- S5
+																			'1',	-- S6
+																			'0',	-- S7
+																			'0',	-- S8
+																			'1',	-- S9
+																			'1',	-- S10
+																			'0',	-- S11
+																			'0',	-- S12
+																			'1',	-- S13
+																			'1',	-- S14
+																			'0',	-- S15
+																			'0',	-- S16
+																			'1',	-- S17
+																			'1',	-- S18
+																			'0',	-- S19
+																			'0',	-- S20
+																			'1',	-- S21
+																			'1',	-- S22
+																			'0',	-- S23
+																			'0',	-- S24
+																			'1',	-- S25
+																			'1'	-- S26
+																			);
 
 	-- Each '1' bit activates the corresponding counter. Counters in ascending order: Counter 0 to Counter 25
 	signal s_activateCounter : std_logic_vector(numServos - 1 downto 0) := (others => '1');
 
 	-- Contains the center correction of each servo. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_centerCorrections : INT_ARRAY(numServos - 1 downto 0) :=	( 	0,		-- S1
-																																					0,		-- S2
-																																					0,		-- S3
-																																					0,		-- S4
-																																					0,		-- S5
-																																					0,		-- S6
-																																					0,		-- S7
-																																					0,		-- S8
-																																					0,		-- S9
-																																					0,		-- S10
-																																					0,		-- S11
-																																					0,		-- S12
-																																					0,		-- S13
-																																					0,		-- S14
-																																					0,		-- S15
-																																					0,		-- S16
-																																					0,		-- S17
-																																					0,		-- S18
-																																					0,		-- S19
-																																					0,		-- S20
-																																					0,		-- S21
-																																					0,		-- S22
-																																					0,		-- S23
-																																					0,		-- S24
-																																					0,		-- S25
-																																					0		-- S26
-																																			);
+	signal s_centerCorrections : INT_ARRAY(numServos - 1 downto 0) := (   0,		-- S1
+																			0,		-- S2
+																			0,		-- S3
+																			0,		-- S4
+																			0,		-- S5
+																			0,		-- S6
+																			0,		-- S7
+																			0,		-- S8
+																			0,		-- S9
+																			0,		-- S10
+																			0,		-- S11
+																			0,		-- S12
+																			0,		-- S13
+																			0,		-- S14
+																			0,		-- S15
+																			0,		-- S16
+																			0,		-- S17
+																			0,		-- S18
+																			0,		-- S19
+																			0,		-- S20
+																			0,		-- S21
+																			0,		-- S22
+																			0,		-- S23
+																			0,		-- S24
+																			0,		-- S25
+																			0		-- S26
+																	);
 
 	-- The initial value of each servo counter. Causes an phase shift. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_initCounterVals : INT_ARRAY(numServos - 1 downto 0) := 	( 	0,		-- S1
-																																					0,		-- S2
-																																					0,	-- S3
-																																					0,	-- S4
-																																					683,	-- S5
-																																					683,	-- S6
-																																					0,	-- S7
-																																					0,	-- S8
-																																					1366,	-- S9
-																																					1366,	-- S10
-																																					0,	-- S11
-																																					0,	-- S12
-																																					2049,	-- S13
-																																					2049,	-- S14
-																																					0,	-- S15
-																																					0,	-- S16
-																																					2732,	-- S17
-																																					2732,	-- S18
-																																					0,	-- S19
-																																					0,	-- S20
-																																					3415,	-- S21
-																																					3415,	-- S22
-																																					0,	-- S23
-																																					0,	-- S24
-																																					0,		-- S25
-																																					0		-- S26
-																																			);
+	signal s_initCounterVals : INT_ARRAY(numServos - 1 downto 0) := (     0,		-- S1
+																			0,		-- S2
+																			0,	-- S3
+																			0,	-- S4
+																			683,	-- S5
+																			683,	-- S6
+																			0,	-- S7
+																			0,	-- S8
+																			1366,	-- S9
+																			1366,	-- S10
+																			0,	-- S11
+																			0,	-- S12
+																			2049,	-- S13
+																			2049,	-- S14
+																			0,	-- S15
+																			0,	-- S16
+																			2732,	-- S17
+																			2732,	-- S18
+																			0,	-- S19
+																			0,	-- S20
+																			3415,	-- S21
+																			3415,	-- S22
+																			0,	-- S23
+																			0,	-- S24
+																			0,		-- S25
+																			0		-- S26
+																	  );
 
 	-- Contains the reduction of the PWM on and off times of the servos. Causes a damp of the altitution of the signal.
-	signal s_damping : INT_ARRAY(numServos - 1 downto 0) :=	( 	0,			-- S1
-																																0,			-- S2
-																																350000,		-- S3
-																																350000,		-- S4
-																																0,			-- S5
-																																0,			-- S6
-																																350000,		-- S7
-																																350000,		-- S8
-																																0,			-- S9
-																																0,			-- S10
-																																350000,		-- S11
-																																350000,		-- S12
-																																0,			-- S13
-																																0,			-- S14
-																																350000,		-- S15
-																																350000,		-- S16
-																																0,			-- S17
-																																0,			-- S18
-																																350000,		-- S19
-																																350000,		-- S20
-																																0,			-- S21
-																																0,			-- S22
-																																350000,		-- S23
-																																350000,		-- S24
-																																0,			-- S25
-																																0			-- S26
-																														);
+	signal s_damping : INT_ARRAY(numServos - 1 downto 0) := (             0,			-- S1
+																			0,			-- S2
+																			350000,		-- S3
+																			350000,		-- S4
+																			0,			-- S5
+																			0,			-- S6
+																			350000,		-- S7
+																			350000,		-- S8
+																			0,			-- S9
+																			0,			-- S10
+																			350000,		-- S11
+																			350000,		-- S12
+																			0,			-- S13
+																			0,			-- S14
+																			350000,		-- S15
+																			350000,		-- S16
+																			0,			-- S17
+																			0,			-- S18
+																			350000,		-- S19
+																			350000,		-- S20
+																			0,			-- S21
+																			0,			-- S22
+																			350000,		-- S23
+																			350000,		-- S24
+																			0,			-- S25
+																			0			-- S26
+															  );
 
 	-- The PWM Signals for the servos
 	signal s_pwmSignal       : std_logic_vector(numServos - 1 downto 0);
@@ -287,7 +287,7 @@ begin
 
 
 	--==========================================================================--
-	-- servo mapping                                                            --
+	-- SERVO MAPPING                                                            --
 	--==========================================================================--
 
 	GEN_SERVOMAP: for i in 0 to (numServos - 1) generate
@@ -313,25 +313,27 @@ begin
 	-- SUPPORTING COMPONENTS                                                    --
 	--==========================================================================--
 
-	uartCommunicator: entity work.UARTCommunicator(UARTCommunicator_a) generic map ( BAUD_RATE_g        => 115200,
-																																										 CLOCK_FREQUENCY_g  => 50000000,
-																																										 numServos_g        => numServos,
-																																										 bufferSize_g       => 255
-																																									 )
-																																			port map    (
-																																											CLK               => CLOCK_50,
-																																											RESET_n           => s_RESET,
+	uartCommunicator: entity work.UARTCommunicator(UARTCommunicator_a) generic map (BAUD_RATE_g        => 115200,
+																					  CLOCK_FREQUENCY_g  => 50000000,
+																					  numServos_g        => numServos,
+																					  bufferSize_g       => 255
+																					 )
+																		port map    (CLK               => CLOCK_50,
+																					  RESET_n           => s_RESET,
 
-																																											activateServo     => s_activateServo,
-																																											activateCounter   => s_activateCounter,
-																																											centerCorrections => s_centerCorrections,
-																																											initCounterVals   => s_initCounterVals,
-																																											damping           => s_damping,
-																																											LUT               => s_LUT,
-																																											dutycycle         => s_dutycycle,
-																																											step              => s_step,
-																																											counter           => s_counter
-																																									 );
+																					  activateServo     => s_activateServo,
+																					  activateCounter   => s_activateCounter,
+																					  centerCorrections => s_centerCorrections,
+																					  initCounterVals   => s_initCounterVals,
+																					  damping           => s_damping,
+																					  LUT               => s_LUT,
+																					  dutycycle         => s_dutycycle,
+																					  step              => s_step,
+																					  counter           => s_counter,
+
+																					  RX                => GPIO_0(30),
+																					  TX                => GPIO_0(31)
+																					 );
 
 
 
@@ -340,10 +342,10 @@ begin
 	--==========================================================================--
 
 	prescaler: entity work.prescaler(prescaler_a)	generic map (scale   => 150000)
-																								port map     (CLK     => CLOCK_50,
-																															 RESET_n => s_RESET,
-																															 TICK    => s_TICK
-																															);
+													port map     (CLK     => CLOCK_50,
+													 			   RESET_n => s_RESET,
+																   TICK    => s_TICK
+																  );
 
 
 
@@ -354,11 +356,11 @@ begin
 	GEN_COUNTERS: for i in 0 to (numServos - 1) generate
 
 		counter_x: entity work.counter(counter_a)	generic map (maxValue_g   => c_counterMaxValue)
-																							port map     (CLK          => ((s_TICK AND s_activateCounter(i)) OR s_step),
-																														 RESET_n      => s_RESET,
-																														 initialValue => s_initCounterVals(i),
-																														 TC           => s_counter(i)
-																														);
+													port map     (CLK          => ((s_TICK AND s_activateCounter(i)) OR s_step),
+																   RESET_n      => s_RESET,
+																   initialValue => s_initCounterVals(i),
+																   TC           => s_counter(i)
+																  );
 
 	end generate GEN_COUNTERS;
 
@@ -369,9 +371,9 @@ begin
 	--==========================================================================--
 
 	SinusLUT: entity work.SinusLUT(SinusLUT_a)	generic map	(numberOfLUTs_g => numServos )
-																							port map     (LUT_IN         => s_counter,
-																														 LUT_OUT        => s_LUT
-																														);
+												port map     (LUT_IN         => s_counter,
+															   LUT_OUT        => s_LUT
+															  );
 
 
 
@@ -385,15 +387,15 @@ begin
 	GEN_SERVOS: for i in 0 to (numServos - 1) generate
 
 		servo_x: entity work.PWMServo(PWMServo_a)	port map	(CLK               => CLOCK_50,
-																													 RESET_n           => s_RESET,
-																													 DUTYCYCLE         => s_dutycycle(i),
+																   RESET_n           => s_RESET,
+																   DUTYCYCLE         => s_dutycycle(i),
 
-																													 PWMOut            => s_pwmSignal(i),
-																													 reduction_g       => s_damping(i),
+																   PWMOut            => s_pwmSignal(i),
+																   reduction_g       => s_damping(i),
 
-																													 INVERT_HORN       => to_std_logic((i mod 2)),
-																													 CENTER_CORRECTION => (s_centerCorrections(i) * 1000)
-																													);
+																   INVERT_HORN       => to_std_logic((i mod 2)),
+																   CENTER_CORRECTION => (s_centerCorrections(i) * 1000)
+																  );
 
 	end generate GEN_SERVOS;
 
