@@ -274,7 +274,8 @@ begin
 	-- SIGNALS                                                                --
 	--@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@--
 
-	s_RESET <= '1';
+	GPIO_0(32) <= 'Z';
+	s_RESET <= GPIO_0(32);--'1';
 	
 	LED(0) <= (SW(0) XOR (s_pwmSignal(0) AND s_activateServo(0)));    -- S1
 	LED(1) <= (SW(0) XOR (s_pwmSignal(1) AND s_activateServo(1)));    -- S2
@@ -320,7 +321,6 @@ begin
 	-- PRESCALER                                                              --
 	--========================================================================--
 	
-	prescaler: entity work.prescaler(prescaler_a)	generic map (scale		=> 150000)
 													port map    (CLK 		=> CLOCK_50,
 																 RESET_n	=> s_RESET,
 																 TICK		=> s_TICK
@@ -366,7 +366,7 @@ begin
 	GEN_SERVOS: for i in 0 to (numServos - 1) generate
 
 		servo_x: entity work.PWMServo(PWMServo_a)	port map	(CLK				=> CLOCK_50,
-																 RESET_n			=> s_RESET,
+																 RESET_n			=> '1',--s_RESET,
 																 DUTYCYCLE			=> s_LUT(i),
 
 																 PWMOut				=> s_pwmSignal(i),
