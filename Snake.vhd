@@ -29,16 +29,11 @@ entity Snake is
 	);
 
 	port (
-		CLOCK_50 : IN    std_logic;
-		LED      : OUT   std_logic_vector(7  downto 0);
-		GPIO_0   : INOUT std_logic_vector(33 downto 0);
-		GPIO_1   : INOUT std_logic_vector(33 downto 0);
-
-		-- SW(0) : invert servo PWM output
-		-- SW(1) : center all servos (not implemented yet)
-		-- SW(2) : global reset (not implemented yet)
-		-- SW(3) : unused
-		SW       : IN    std_logic_vector(3  downto 0)
+		CLOCK_50 : in  std_logic;
+		SW       : in  std_logic_vector(9  downto 0);
+		LEDG     : out std_logic_vector(9  downto 0);
+		GPIO_0   : inout std_logic_vector(31 downto 0);
+		GPIO_1   : inout std_logic_vector(31 downto 0)
 	);
 
 end Snake;
@@ -126,28 +121,28 @@ architecture Snake_a of Snake is
 																			'1',	-- S2
 																			'0',	-- S3
 																			'0',	-- S4
-																			'1',	-- S5
-																			'1',	-- S6
+																			'0',	-- S5
+																			'0',	-- S6
 																			'0',	-- S7
 																			'0',	-- S8
-																			'1',	-- S9
-																			'1',	-- S10
+																			'0',	-- S9
+																			'0',	-- S10
 																			'0',	-- S11
 																			'0',	-- S12
-																			'1',	-- S13
-																			'1',	-- S14
+																			'0',	-- S13
+																			'0',	-- S14
 																			'0',	-- S15
 																			'0',	-- S16
-																			'1',	-- S17
-																			'1',	-- S18
+																			'0',	-- S17
+																			'0',	-- S18
 																			'0',	-- S19
 																			'0',	-- S20
-																			'1',	-- S21
-																			'1',	-- S22
+																			'0',	-- S21
+																			'0',	-- S22
 																			'0',	-- S23
 																			'0',	-- S24
-																			'1',	-- S25
-																			'1'	-- S26
+																			'0',	-- S25
+																			'0'	-- S26
 																			);
 
 	-- Each '1' bit activates the corresponding counter. Counters in ascending order: Counter 0 to Counter 25
@@ -259,6 +254,10 @@ architecture Snake_a of Snake is
 	signal s_counter         : INT_ARRAY(numServos - 1 downto 0);
 
 
+	signal RX                : std_logic;
+	signal TX                : std_logic;
+
+
 
 
 
@@ -269,17 +268,25 @@ begin
 	-- SIGNALS                                                                  --
 	--==========================================================================--
 
-	GPIO_0(32) <= 'Z';
-	s_RESET <= GPIO_0(32);--'1';
+	-- GPIO_1(0) = J5_2 = RX
+	-- GPIO_1(1) = J5_4 = TX
+	-- GND       = J5_12
+	GPIO_1(0) <= 'Z';
+	RX        <= GPIO_1(0);
+	LEDG(0)   <= GPIO_1(0);
 
-	LED(0) <= (SW(0) XOR (s_pwmSignal(0) AND s_activateServo(0)));    -- S1
-	LED(1) <= (SW(0) XOR (s_pwmSignal(1) AND s_activateServo(1)));    -- S2
-	LED(2) <= '1';
-	LED(3) <= '0';
-	LED(4) <= '1';
-	LED(5) <= '0';
-	LED(6) <= '1';
-	LED(7) <= '0';
+	GPIO_1(1) <= TX;
+	LEDG(1)   <= TX;
+
+	s_RESET <= SW(1);
+
+	--LEDG(2) <= '0';
+	--LEDG(3) <= (SW(0) XOR (s_pwmSignal(0) AND s_activateServo(0)));    -- S1
+	--LEDG(4) <= (SW(0) XOR (s_pwmSignal(1) AND s_activateServo(1)));    -- S2
+	--LEDG(5) <= '1';
+	--LEDG(6) <= '0';
+	--LEDG(7) <= '1';
+	--LEDG(8) <= '0';
 
 
 
@@ -290,19 +297,20 @@ begin
 	-- SERVO MAPPING                                                            --
 	--==========================================================================--
 
-	GEN_SERVOMAP: for i in 0 to (numServos - 1) generate
+	-- Disabled to fit on DE0 Board
+	--GEN_SERVOMAP: for i in 0 to (numServos - 1) generate
 
-		PORT0_SEL: if (c_servoPorts(i) < 100) generate
-			-- GPIO_0
-			GPIO_0(c_servoPorts(i)) <= (SW(0) XOR (s_activateServo(i) AND s_pwmSignal(i)));
-		end generate PORT0_SEL;
+	--	PORT0_SEL: if (c_servoPorts(i) < 100) generate
+	--		-- GPIO_0
+	--		GPIO_0(c_servoPorts(i)) <= (SW(0) XOR (s_activateServo(i) AND s_pwmSignal(i)));
+	--	end generate PORT0_SEL;
 
-		PORT1_SEL: if (c_servoPorts(i) >= 100) generate
-			-- GPIO_1
-			GPIO_1(c_servoPorts(i) - 100) <= (SW(0) XOR (s_activateServo(i) AND s_pwmSignal(i)));
-		end generate PORT1_SEL;
+	--	PORT1_SEL: if (c_servoPorts(i) >= 100) generate
+	--		-- GPIO_1
+	--		GPIO_1(c_servoPorts(i) - 100) <= (SW(0) XOR (s_activateServo(i) AND s_pwmSignal(i)));
+	--	end generate PORT1_SEL;
 
-	end generate GEN_SERVOMAP;
+	--end generate GEN_SERVOMAP;
 
 
 
@@ -331,8 +339,10 @@ begin
 																					  step              => s_step,
 																					  counter           => s_counter,
 
-																					  RX                => GPIO_0(30),
-																					  TX                => GPIO_0(31)
+																					  RX                => RX,
+																					  TX                => TX,
+
+																					  debug             => LEDG(9 downto 2)
 																					 );
 
 
@@ -341,11 +351,11 @@ begin
 	-- PRESCALER                                                                --
 	--==========================================================================--
 
-	prescaler: entity work.prescaler(prescaler_a)	generic map (scale   => 150000)
-													port map     (CLK     => CLOCK_50,
-													 			   RESET_n => s_RESET,
-																   TICK    => s_TICK
-																  );
+	--prescaler: entity work.prescaler(prescaler_a)	generic map (scale   => 150000)
+	--												port map     (CLK     => CLOCK_50,
+	--												 			   RESET_n => s_RESET,
+	--															   TICK    => s_TICK
+	--															  );
 
 
 
@@ -353,16 +363,16 @@ begin
 	-- COUNTERS                                                                 --
 	--==========================================================================--
 
-	GEN_COUNTERS: for i in 0 to (numServos - 1) generate
+	--GEN_COUNTERS: for i in 0 to (numServos - 1) generate
 
-		counter_x: entity work.counter(counter_a)	generic map (maxValue_g   => c_counterMaxValue)
-													port map     (CLK          => ((s_TICK AND s_activateCounter(i)) OR s_step),
-																   RESET_n      => s_RESET,
-																   initialValue => s_initCounterVals(i),
-																   TC           => s_counter(i)
-																  );
+	--	counter_x: entity work.counter(counter_a)	generic map (maxValue_g   => c_counterMaxValue)
+	--												port map     (CLK          => ((s_TICK AND s_activateCounter(i)) OR s_step),
+	--															   RESET_n      => s_RESET,
+	--															   initialValue => s_initCounterVals(i),
+	--															   TC           => s_counter(i)
+	--															  );
 
-	end generate GEN_COUNTERS;
+	--end generate GEN_COUNTERS;
 
 
 
@@ -370,10 +380,10 @@ begin
 	-- LOOK UP TABLE                                                            --
 	--==========================================================================--
 
-	SinusLUT: entity work.SinusLUT(SinusLUT_a)	generic map	(numberOfLUTs_g => numServos )
-												port map     (LUT_IN         => s_counter,
-															   LUT_OUT        => s_LUT
-															  );
+	--SinusLUT: entity work.SinusLUT(SinusLUT_a)	generic map	(numberOfLUTs_g => numServos )
+	--											port map     (LUT_IN         => s_counter,
+	--														   LUT_OUT        => s_LUT
+	--														  );
 
 
 
@@ -384,20 +394,20 @@ begin
 	--==========================================================================--
 
 
-	GEN_SERVOS: for i in 0 to (numServos - 1) generate
+	--GEN_SERVOS: for i in 0 to (numServos - 1) generate
 
-		servo_x: entity work.PWMServo(PWMServo_a)	port map	(CLK               => CLOCK_50,
-																   RESET_n           => s_RESET,
-																   DUTYCYCLE         => s_dutycycle(i),
+	--	servo_x: entity work.PWMServo(PWMServo_a)	port map	(CLK               => CLOCK_50,
+	--															   RESET_n           => s_RESET,
+	--															   DUTYCYCLE         => s_dutycycle(i),
 
-																   PWMOut            => s_pwmSignal(i),
-																   reduction_g       => s_damping(i),
+	--															   PWMOut            => s_pwmSignal(i),
+	--															   reduction_g       => s_damping(i),
 
-																   INVERT_HORN       => to_std_logic((i mod 2)),
-																   CENTER_CORRECTION => (s_centerCorrections(i) * 1000)
-																  );
+	--															   INVERT_HORN       => to_std_logic((i mod 2)),
+	--															   CENTER_CORRECTION => (s_centerCorrections(i) * 1000)
+	--															  );
 
-	end generate GEN_SERVOS;
+	--end generate GEN_SERVOS;
 
 
 

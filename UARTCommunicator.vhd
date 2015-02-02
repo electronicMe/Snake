@@ -48,7 +48,9 @@ port (
 	counter           : in    INT_ARRAY(numServos_g - 1 downto 0);
 
 	TX                : out   std_logic;
-	RX                : in    std_logic
+	RX                : in    std_logic;
+
+	debug             : out   std_logic_vector(7 downto 0)
 );
 
 end UARTCommunicator;
@@ -94,16 +96,17 @@ architecture UARTCommunicator_a of UARTCommunicator is
 
 
 	------------------------------------------------------------------UART INPUT
-	signal inBuffer                : buffer_t := ((others => '0'), 1, 0);
-	signal processInBuffer         : std_logic;
-	signal lastSentInBufferPointer : positive := 1;
-	constant commandTerminator     : character := LF;
+	signal inBuffer                : buffer_t  := ((others => '0'), 1, 0);
+	signal processInBuffer         : std_logic := '0';
+	signal lastSentInBufferPointer : positive  := 1;
+	constant commandTerminator     : character := CR;
 
 
 	-----------------------------------------------------------------UART OUTPUT
-	signal outBuffer   : buffer_t := ((others => '0'), 1, 0);
-	signal readyToSend : std_logic;
-	signal sendBuffer  : buffer_t := ((others => '0'), 1, 0);
+	signal outBuffer        : buffer_t  := ((others => '0'), 1, 0);
+	signal sendBuffer       : buffer_t  := ((others => '0'), 1, 0);
+	signal readyToSend      : std_logic := '0';
+	signal commandProcessed : std_logic := '0';
 
 
 	----------------------------------------------------------------UART Signals
@@ -236,7 +239,11 @@ architecture UARTCommunicator_a of UARTCommunicator is
 						   constant newValue  : in    string
 						 ) is
 	begin
+		theString := (others => NUL);
 
+		for i in 1 to newValue'length loop
+			theString(i) := newValue(i);
+		end loop;
 	end procedure setString;
 
 
@@ -270,7 +277,7 @@ architecture UARTCommunicator_a of UARTCommunicator is
 						 ) is
 	begin
 
-		if (theBuffer.bufferPointer < theBuffer.contentSize) then
+		if (theBuffer.bufferPointer <= theBuffer.contentSize) then
 			data <= CONV(theBuffer.bufferContent(theBuffer.bufferPointer));
 			theBuffer.bufferPointer <= theBuffer.bufferPointer + 1;
 		else
@@ -284,18 +291,25 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	procedure writeBuffer( signal   theBuffer : inout buffer_t;
 							variable data      : in     string
 						  ) is
+		variable bufferPointer : natural := 1;
+		variable contentSize   : natural := 0;
 	begin
 
 		-- check for buffer overflow
-		if ((data'length + theBuffer.contentSize) <= bufferSize_g) then
+		if (data'length <= bufferSize_g) then
 
-			theBuffer.bufferPointer <= theBuffer.contentSize + 1;
+			theBuffer.bufferContent <= (others => NUL);
 
-			for i in 1 to data'length loop
-				theBuffer.bufferContent(theBuffer.bufferPointer) <= data(i);
-				theBuffer.bufferPointer <= theBuffer.bufferPointer + 1;
-				theBuffer.contentSize   <= theBuffer.contentSize   + 1;
+			copyLoop: for i in 1 to data'length loop
+				exit copyLoop when (data(i) = NUL);
+
+				theBuffer.bufferContent(bufferPointer) <= data(i);
+				bufferPointer := bufferPointer + 1;
+				contentSize   := contentSize   + 1;
 			end loop;
+
+			theBuffer.bufferPointer <= bufferPointer;
+			theBuffer.contentSize   <= contentSize;
 		end if;
 
 	end procedure writeBuffer;
@@ -327,7 +341,7 @@ begin
 	uart: entity work.UART(RTL) generic map (BAUD_RATE           => BAUD_RATE_g,
 											   CLOCK_FREQUENCY     => CLOCK_FREQUENCY_g)
 								 port map    (CLOCK               => CLK,
-											   RESET               => RESET_n,
+											   RESET               => NOT RESET_n,
 											   DATA_STREAM_IN      => DATA_STREAM_IN,
 											   DATA_STREAM_IN_STB  => DATA_STREAM_IN_STB,
 											   DATA_STREAM_IN_ACK  => DATA_STREAM_IN_ACK,
@@ -392,8 +406,8 @@ begin
 			processInBuffer     <= '0';
 		elsif rising_edge(CLK) then
 
-			-- clear in buffer if a command was received recently
-			if (processInBuffer = '1') then
+			-- clear in buffer if a command was processed
+			if (commandProcessed = '1') then
 				resetBuffer(inBuffer);
 			end if;
 
@@ -408,7 +422,7 @@ begin
 				DATA_STREAM_OUT_ACK <= '1';
 
 				-- Receive character
-				receivedCharacter := CONV(DATA_STREAM_IN);
+				receivedCharacter := CONV(DATA_STREAM_OUT);
 
 				-- Check if character is command terminator
 				if (receivedCharacter = commandTerminator) then
@@ -448,18 +462,18 @@ begin
 						s_uartSendState <= uartSendState_send;
 					end if;
 				when uartSendState_send       =>-------------uartSendState_send
-					if (sendBuffer.bufferPointer >= sendBuffer.contentSize) then
+					if (sendBuffer.bufferPointer > sendBuffer.contentSize) then
 						s_uartSendState <= uartSendState_start;
 					elsif (DATA_STREAM_IN_ACK = '0') then
 						s_uartSendState <= uartSendState_write;
 					end if;
 				when uartSendState_write      =>------------uartSendState_write
-					readBuffer(sendBuffer, DATA_STREAM_OUT);
+					readBuffer(sendBuffer, DATA_STREAM_IN);
 					DATA_STREAM_IN_STB      <= '1';
 					s_uartSendState         <= uartSendState_waitForACK;
 				when uartSendState_waitForACK =>-------uartSendState_waitForACK
 					if (DATA_STREAM_IN_ACK = '1') then
-						s_uartSendState    <= uartSendState_start;
+						s_uartSendState    <= uartSendState_send;
 						DATA_STREAM_IN_STB <= '0';
 					end if;
 			end case; -------------------------------------------------end case
@@ -486,7 +500,8 @@ begin
 			readyToSend             <= '0';
 			lastSentInBufferPointer <= 1;
 		elsif rising_edge(CLK) then
-			readyToSend <= '0';
+			readyToSend      <= '0';
+			commandProcessed <= '0';
 
 			if (processInBuffer = '1') then
 
@@ -497,7 +512,13 @@ begin
 				if compareStrings(command, "hello") then
 					setString(data, "Hello there :D");
 					writeBuffer(outBuffer, data);
-					readyToSend <= '1';
+					readyToSend      <= '1';
+					commandProcessed <= '1';
+				elsif compareStrings(command, "ping") then
+					setString(data, "pong");
+					writeBuffer(outBuffer, data);
+					readyToSend      <= '1';
+					commandProcessed <= '1';
 				end if;
 
 			elsif (inBuffer.bufferPointer /= lastSentInBufferPointer) then
@@ -506,6 +527,8 @@ begin
 
 				lastSentInBufferPointer <= inBuffer.bufferPointer;
 				data(1)                 := inBuffer.bufferContent(inBuffer.bufferPointer - 1);
+				data(2)                 := NUL;
+				writeBuffer(outBuffer, data);
 				readyToSend             <= '1';
 
 			end if;
