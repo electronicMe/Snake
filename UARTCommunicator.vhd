@@ -18,6 +18,7 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use work.Arrays_pkg.all;
 use std.textio.all;
+use ieee.numeric_std.all;
 
 
 
@@ -50,7 +51,8 @@ port (
 	TX                : out   std_logic;
 	RX                : in    std_logic;
 
-	debug             : out   std_logic_vector(7 downto 0)
+	debug             : out   std_logic_vector(7 downto 0);
+	debug2            : in    std_logic_vector(7 downto 0)
 );
 
 end UARTCommunicator;
@@ -91,14 +93,15 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	-- SIGNALS                                                                --
 	--========================================================================--
 
-	signal s_runMode       : runMode       := runMode_stopped;
-	signal s_uartSendState : uartSendState := uartSendState_start;
+	signal s_runMode                : runMode       := runMode_stopped;
+	signal s_uartSendState          : uartSendState := uartSendState_start;
+	signal s_commandProcessWasReset : std_logic := '1';
 
 
 	------------------------------------------------------------------UART INPUT
 	signal inBuffer                : buffer_t  := ((others => '0'), 1, 0);
 	signal processInBuffer         : std_logic := '0';
-	signal lastSentInBufferPointer : positive  := 1;
+	signal lastSentInBufferPointer : positive  :=  1;
 	constant commandTerminator     : character := CR;
 
 
@@ -196,12 +199,12 @@ architecture UARTCommunicator_a of UARTCommunicator is
 			end if;
 
 
-			if NOT ((char1 = NUL) OR (char2 = NUL) OR (char1 = char2)) then
+			if (char1 /= char2) then
 				return FALSE;
 			end if;
-
-			return TRUE;
 		end loop;
+
+		return TRUE;
 	end compareStrings;
 
 
@@ -254,7 +257,7 @@ architecture UARTCommunicator_a of UARTCommunicator is
 								 variable data      : in    character
 							   ) is
 	begin
-		if (theBuffer.contentSize < bufferSize_g) then
+		if ((theBuffer.contentSize < bufferSize_g) AND (data /= LF)) then
 			theBuffer.bufferContent(theBuffer.bufferPointer) <= data;
 			theBuffer.bufferPointer <= theBuffer.bufferPointer + 1;
 			theBuffer.contentSize   <= theBuffer.contentSize   + 1;
@@ -265,7 +268,7 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	-----------------------------------------------------------------resetBuffer
 	procedure resetBuffer( signal theBuffer : out buffer_t) is
 	begin
-		theBuffer <= ((others => '0'), 1, 0);
+		theBuffer <= ((others => NUL), 1, 0);
 	end procedure resetBuffer;
 
 
@@ -315,6 +318,19 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	end procedure writeBuffer;
 
 
+	---------------------------------------------------------------answerCommand
+	-- This procedure should only be called by the p_commandProcessor process
+	-- to send an aswer of a command
+	procedure answerCommand ( constant answer : in string) is
+		variable data    : string(1 to bufferSize_g) := (others => NUL);
+	begin
+		setString(data, LF & answer & LF & '>');
+		writeBuffer(outBuffer, data);
+		readyToSend      <= '1';
+		commandProcessed <= '1';
+	end procedure answerCommand;
+
+
 	------------------------------------------------------------------copyBuffer
 	-- Copies the source buffer to the destination buffer and sets the pointer
 	-- of the destination buffer to 1
@@ -326,9 +342,6 @@ architecture UARTCommunicator_a of UARTCommunicator is
 		destinationBuffer.contentSize   <= sourceBuffer.contentSize;
 		destinationBuffer.bufferPointer <= 1;
 	end procedure copyBuffer;
-
-
-
 
 
 
@@ -406,17 +419,13 @@ begin
 			processInBuffer     <= '0';
 		elsif rising_edge(CLK) then
 
-			-- clear in buffer if a command was processed
-			if (commandProcessed = '1') then
-				resetBuffer(inBuffer);
-			end if;
-
-
 			DATA_STREAM_OUT_ACK <= '0';
 			processInBuffer     <= '0';
 
-
-			if (DATA_STREAM_OUT_STB = '1') then
+			-- clear in buffer if a command was processed
+			if (commandProcessed = '1') then
+				resetBuffer(inBuffer);
+			elsif ((DATA_STREAM_OUT_STB = '1') AND (DATA_STREAM_OUT_ACK = '0')) then
 
 				-- Tell uart we finished receiving the character
 				DATA_STREAM_OUT_ACK <= '1';
@@ -497,11 +506,22 @@ begin
 
 		if (RESET_n = '0') then
 			resetBuffer(outBuffer);
-			readyToSend             <= '0';
-			lastSentInBufferPointer <= 1;
+			readyToSend               <= '0';
+			lastSentInBufferPointer   <=  1;
+			s_commandProcessWasReset  <= '1';
 		elsif rising_edge(CLK) then
 			readyToSend      <= '0';
 			commandProcessed <= '0';
+
+
+			-- Send Startup Message if process was reset recently
+			if (s_commandProcessWasReset = '1') then
+				s_commandProcessWasReset <= '0';
+				setString(data, "This program was written by Sebastian Mach - TGM 2014-2015 5AHEL - All Rights Reserved" & LF & '>');
+				writeBuffer(outBuffer, data);
+				readyToSend      <= '1';
+			end if;
+
 
 			if (processInBuffer = '1') then
 
@@ -510,15 +530,13 @@ begin
 				command := inBuffer.bufferContent;
 
 				if compareStrings(command, "hello") then
-					setString(data, "Hello there :D");
-					writeBuffer(outBuffer, data);
-					readyToSend      <= '1';
-					commandProcessed <= '1';
+					answerCommand("Hello there :D");
 				elsif compareStrings(command, "ping") then
-					setString(data, "pong");
-					writeBuffer(outBuffer, data);
-					readyToSend      <= '1';
-					commandProcessed <= '1';
+					answerCommand("pong");
+				elsif compareStrings(command, "help") then
+					answerCommand("read the documentation for more information");
+				else
+					answerCommand("Unknown Command");
 				end if;
 
 			elsif (inBuffer.bufferPointer /= lastSentInBufferPointer) then

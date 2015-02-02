@@ -342,7 +342,8 @@ begin
 																					  RX                => RX,
 																					  TX                => TX,
 
-																					  debug             => LEDG(9 downto 2)
+																					  debug             => LEDG(9 downto 2),
+																					  debug2            => SW(9 downto 2)
 																					 );
 
 
