@@ -9,7 +9,7 @@
 --  .) http://www.stefanvhdl.com/vhdl/vhdl/txt_util.vhd
 --  .) http://de.wikibooks.org/wiki/VHDL#records
 --  .) http://www.mrc.uidaho.edu/mrc/people/jff/vhdl_info/txt_util.vhd
---  .) http://cseweb.ucsd.edu/~tweng/cse143/VHDLReference/04.pdf
+--  .) DataTypes - http://cseweb.ucsd.edu/~tweng/cse143/VHDLReference/04.pdf
 --  .) http://courses.cs.washington.edu/courses/cse477/00sp/projectwebs/groupb/Anita/WorkingFolder5-24-2330pm/ToPS2/LedRegister/LEDREG/CONV.VHD
 --
 
@@ -45,14 +45,16 @@ port (
 	damping           : inout INT_ARRAY(numServos_g - 1 downto 0);
 	LUT               : in    INT_ARRAY(numServos_g - 1 downto 0);
 	dutycycle         : inout INT_ARRAY(numServos_g - 1 downto 0);
-	step              : out   std_logic;
 	counter           : in    INT_ARRAY(numServos_g - 1 downto 0);
+
+	step              : out   std_logic;
+	reset             : out   std_logic;
 
 	TX                : out   std_logic;
 	RX                : in    std_logic;
 
-	debug             : out   std_logic_vector(7 downto 0);
-	debug2            : in    std_logic_vector(7 downto 0)
+	debug             : out   std_logic;
+	debug2            : out   std_logic
 );
 
 end UARTCommunicator;
@@ -70,8 +72,32 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	-- TYPE DEFINITIONS                                                       --
 	--========================================================================--
 
-	type runMode is (runMode_stopped, runMode_centering, runMode_singleStep, runMode_running);
-	type uartSendState is (uartSendState_start, uartSendState_send, uartSendState_write, uartSendState_waitForACK);
+	type runMode is (			runMode_stopped,
+								runMode_centering,
+								runMode_singleStep,
+								runMode_running
+					);
+
+	type commandMode is (		commandMode_home,
+								commandMode_set,
+								commandMode_get
+						);
+
+	type commandSubMode is (	commandSubMode_runMode,
+								commandSubMode_servo,
+								commandSubMode_counter,
+								commandSubMode_centerCorrection,
+								commandSubMode_initCounterValue,
+								commandSubMode_damping,
+								commandSubMode_lut,
+								commandSubMode_dutycycle
+						   );
+
+	type uartSendState is (		uartSendState_start,
+								uartSendState_send,
+								uartSendState_write,
+								uartSendState_waitForACK
+						  );
 
 	type buffer_t is record
 		-- Holds the buffer content
@@ -84,6 +110,12 @@ architecture UARTCommunicator_a of UARTCommunicator is
 		contentSize   : integer range 0 to bufferSize_g;
 	end record;
 
+	type command_t is record
+		command : string(1 to bufferSize_g) := (others => NUL);
+		id      : integer range 0 to numServos_g - 1;
+		value   : integer;
+	end record;
+
 
 
 
@@ -93,9 +125,11 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	-- SIGNALS                                                                --
 	--========================================================================--
 
-	signal s_runMode                : runMode       := runMode_stopped;
-	signal s_uartSendState          : uartSendState := uartSendState_start;
-	signal s_commandProcessWasReset : std_logic := '1';
+	signal s_runMode                : runMode        := runMode_stopped;
+	signal s_commandMode            : commandMode    := commandMode_home;
+	signal s_commandSubMode         : commandSubMode := commandSubMode_runMode;
+	signal s_uartSendState          : uartSendState  := uartSendState_start;
+	signal s_commandProcessWasReset : std_logic      := '1';
 
 
 	------------------------------------------------------------------UART INPUT
@@ -209,6 +243,104 @@ architecture UARTCommunicator_a of UARTCommunicator is
 
 
 
+	---------------------------------------------------------- stringFromRunMode
+	function stringFromRunMode (rm: runMode) return string is
+	begin
+
+		if (rm = runMode_running) then
+			return "running";
+		elsif (rm = runMode_stopped) then
+			return "stopped";
+		elsif (rm = runMode_singleStep) then
+			return "singleStep";
+		elsif (rm = runMode_centering) then
+			return "centering";
+		else
+			return "?";
+		end if;
+	end stringFromRunMode;
+
+
+
+	------------------------------------------------------ stringFromCommandMode
+	function stringFromCommandMode (cm: commandMode) return string is
+	begin
+
+		if (cm = commandMode_home) then
+			return "home";
+		elsif (cm = commandMode_set) then
+			return "set ";
+		elsif (cm = commandMode_get) then
+			return "get ";
+		else
+			return "?   ";
+		end if;
+	end stringFromCommandMode;
+
+
+
+	--------------------------------------------------- stringFromCommandSubMode
+	function stringFromCommandSubMode (csm: commandSubMode) return string is
+	begin
+
+		if (csm = commandSubMode_runMode) then
+			return "runMode";
+		elsif (csm = commandSubMode_servo) then
+			return "servo";
+		elsif (csm = commandSubMode_counter) then
+			return "counter";
+		elsif (csm = commandSubMode_centerCorrection) then
+			return "centerCorrection";
+		elsif (csm = commandSubMode_initCounterValue) then
+			return "initCounterValue";
+		elsif (csm = commandSubMode_damping) then
+			return "damping";
+		elsif (csm = commandSubMode_lut) then
+			return "lut";
+		elsif (csm = commandSubMode_dutycycle) then
+			return "dutycycle";
+		elsif (csm = commandSubMode_counter) then
+			return "counter";
+		else
+			return "?";
+		end if;
+	end stringFromCommandSubMode;
+
+
+
+	---------------------------------------------------------------- stringToInt
+	function stringToInt (str: string) return integer is
+		variable value       : integer := 0;
+		variable coefficient : integer := 1;
+	begin
+
+		for i in str'length to 1 loop
+
+			if ( str(i) = '0') OR
+			    (str(i) = '1') OR
+			    (str(i) = '2') OR
+			    (str(i) = '3') OR
+			    (str(i) = '4') OR
+			    (str(i) = '5') OR
+			    (str(i) = '6') OR
+			    (str(i) = '7') OR
+			    (str(i) = '8') OR
+			    (str(i) = '9')   ) then
+
+				value       := (str(i) - 48) * coefficient;
+				coefficient := coefficient   * 10;
+
+			end if;
+
+			if ((i = 1) AND (str(i) = '-')) then
+				value = -1 * value;
+			end if;
+
+		end loop;
+	end stringToInt;
+
+
+
 
 
 
@@ -286,7 +418,6 @@ architecture UARTCommunicator_a of UARTCommunicator is
 		else
 			data <= (others => '0');
 		end if;
-
 	end procedure readBuffer;
 
 
@@ -314,7 +445,6 @@ architecture UARTCommunicator_a of UARTCommunicator is
 			theBuffer.bufferPointer <= bufferPointer;
 			theBuffer.contentSize   <= contentSize;
 		end if;
-
 	end procedure writeBuffer;
 
 
@@ -322,9 +452,9 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	-- This procedure should only be called by the p_commandProcessor process
 	-- to send an aswer of a command
 	procedure answerCommand ( constant answer : in string) is
-		variable data    : string(1 to bufferSize_g) := (others => NUL);
+		variable data : string(1 to bufferSize_g) := (others => NUL);
 	begin
-		setString(data, LF & answer & LF & '>');
+		setString(data, CR & LF & answer & CR & LF & stringFromRunMode(s_runMode) & '/' & stringFromCommandMode(s_commandMode) & '>');
 		writeBuffer(outBuffer, data);
 		readyToSend      <= '1';
 		commandProcessed <= '1';
@@ -335,13 +465,66 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	-- Copies the source buffer to the destination buffer and sets the pointer
 	-- of the destination buffer to 1
 	procedure copyBuffer( signal sourceBuffer      : in buffer_t;
-						   signal destinationBuffer : out buffer_t
+						  signal destinationBuffer : out buffer_t
 						 ) is
 	begin
 		destinationBuffer.bufferContent <= sourceBuffer.bufferContent;
 		destinationBuffer.contentSize   <= sourceBuffer.contentSize;
 		destinationBuffer.bufferPointer <= 1;
 	end procedure copyBuffer;
+
+
+	-----------------------parseInput
+	--
+	procedure parseInput( variable input   : string;
+						  variable command : command_t
+						) is
+		variable stringBuffer : string := (others => NUL);
+
+		variable commandLength : integer := 0;
+		variable idLength      : integer := 0;
+		variable valueLength   : integer := 0;
+	begin
+
+		-- get command from input
+		commandLoop: for i in 1 to input'length loop
+			-- loop until space
+			exit copyLoop when (data(i) = ’ ’);
+
+			stringBuffer(i) := input(i);
+			commandLength := i;
+		end loop;
+
+		command.command := stringBuffer;
+		stringBuffer    := (others => NUL);
+
+
+
+		-- get id from input
+		idLoop: for i in commandLength + 2 to input'length loop
+			-- loop until space
+			exit copyLoop when (data(i) = ’ ’);
+
+			stringBuffer(i - commandLength - 1) := input(i);
+			idLength  := i - commandLength - 1;
+		end loop;
+
+		command.id   := stringToInt(stringBuffer);
+		stringBuffer := (others => NUL);
+
+
+
+		-- get value from input
+		valueLoop: for i in commandLength + idLength + 4 to input'length loop
+			-- loop until space
+			exit copyLoop when (data(i) = ’ ’);
+
+			stringBuffer(i - commandLength - idLength - 2) := input(i);
+			idLength  := i - commandLength - idLength - 2;
+		end loop;
+
+		command.value := stringToInt(stringBuffer);
+	end procedure parseInput;
 
 
 
@@ -417,6 +600,7 @@ begin
 			resetBuffer(inBuffer);
 			DATA_STREAM_OUT_ACK <= '0';
 			processInBuffer     <= '0';
+			debug               <= '0';
 		elsif rising_edge(CLK) then
 
 			DATA_STREAM_OUT_ACK <= '0';
@@ -437,6 +621,7 @@ begin
 				if (receivedCharacter = commandTerminator) then
 					-- Finished receiving command. Trigger command processing
 					processInBuffer <= '1';
+					debug           <= '1';
 				else
 					-- Command not finished yet. Write character into input buffer.
 					appendCharacter(inBuffer, receivedCharacter);
@@ -500,7 +685,7 @@ begin
 	-- COMMAND PROCESSER                                                      --
 	--========================================================================--
 	p_commandProcessor: process(CLK, RESET_n)
-		variable command : string(1 to bufferSize_g) := (others => NUL);
+		variable command : command_t;
 		variable data    : string(1 to bufferSize_g) := (others => NUL);
 	begin
 
@@ -509,15 +694,19 @@ begin
 			readyToSend               <= '0';
 			lastSentInBufferPointer   <=  1;
 			s_commandProcessWasReset  <= '1';
+			reset                     <= '0';
+			step                      <= '0';
+			debug2                    <= '0';
 		elsif rising_edge(CLK) then
 			readyToSend      <= '0';
 			commandProcessed <= '0';
+			step             <= '0';
 
 
 			-- Send Startup Message if process was reset recently
 			if (s_commandProcessWasReset = '1') then
 				s_commandProcessWasReset <= '0';
-				setString(data, "This program was written by Sebastian Mach - TGM 2014-2015 5AHEL - All Rights Reserved" & LF & '>');
+				setString(data, "This program was written by Sebastian Mach - TGM 2014-2015 5AHEL - All Rights Reserved" & CR & LF & '>');
 				writeBuffer(outBuffer, data);
 				readyToSend      <= '1';
 			end if;
@@ -527,16 +716,173 @@ begin
 
 				-- process new command
 
-				command := inBuffer.bufferContent;
+				command := parseInput(inBuffer.bufferContent);
 
+				---------------------------------------------------------- hello
 				if compareStrings(command, "hello") then
 					answerCommand("Hello there :D");
+
+				----------------------------------------------------------- ping
 				elsif compareStrings(command, "ping") then
 					answerCommand("pong");
+					debug2 <= '1';
+
+				----------------------------------------------------------- help
 				elsif compareStrings(command, "help") then
 					answerCommand("read the documentation for more information");
-				else
-					answerCommand("Unknown Command");
+
+				----------------------------------------------------------- home
+				elsif compareStrings(command, "home") then
+					s_commandMode <= commandMode_home;
+					answerCommand("");
+
+				------------------------------------------------------------ set
+				elsif compareStrings(command, "set") then
+					s_commandMode <= commandMode_set;
+					answerCommand("");
+
+				------------------------------------------------------------ get
+				elsif compareStrings(command, "get") then
+					s_commandMode <= commandMode_get;
+					answerCommand("");
+
+				---------------------------------------------------------- reset
+				elsif compareStrings(command, "reset") then
+					reset <= '1';
+
+				----------------------------------------------------------- tick
+				elsif compareStrings(command, "tick") then
+					step <= '1';
+				end if;
+
+
+
+				--========================================================== get
+				if (s_commandMode = commandMode_get) then
+
+					---------------------------------------------------- runMode
+					if compareStrings(command.command, "runMode") then
+						answerCommand("runMode = " & stringFromRunMode(s_runMode));
+
+					------------------------------------------------------ servo
+					if compareStrings(command.command, "servo") then
+
+						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("get servo: invalid id");
+						else
+							answerCommand("get servo: not implemented yet");
+						end if;
+
+
+					---------------------------------------------------- counter
+					if compareStrings(command.command, "counter") then
+
+						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("get counter: invalid id");
+						else
+							answerCommand("get counter: not implemented yet");
+						end if;
+
+
+
+					------------------------------------------- centerCorrection
+					if compareStrings(command.command, "centerCorrection") then
+
+						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("get centerCorrection: invalid id");
+						else
+							answerCommand("get centerCorrection: not implemented yet");
+						end if;
+
+
+					------------------------------------------- initCounterValue
+					if compareStrings(command.command, "initCounterValue") then
+
+						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("get initCounterValue: invalid id");
+						else
+							answerCommand("get initCounterValue: not implemented yet");
+						end if;
+
+
+					---------------------------------------------------- damping
+					if compareStrings(command.command, "damping") then
+
+						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("get damping: invalid id");
+						else
+							answerCommand("get damping: not implemented yet");
+						end if;
+
+
+					-------------------------------------------------------- LUT
+					if compareStrings(command.command, "LUT") then
+
+						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("get LUT: invalid id");
+						else
+							answerCommand("get LUT: not implemented yet");
+						end if;
+
+
+					-------------------------------------------------- dutycycle
+					if compareStrings(command.command, "dutycycle") then
+
+						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("get dutycycle: invalid id");
+						else
+							answerCommand("get dutycycle: not implemented yet");
+						end if;
+
+
+					else
+						answerCommand("Unknown Command");
+
+					end if;
+
+				--========================================================== set
+				elsif (s_commandMode = commandMode_set) then
+
+					---------------------------------------------------- runMode
+					if compareStrings(command.command, "runMode") then
+						answerCommand("get runMode: not implemented yet");
+
+
+					------------------------------------------------------ servo
+					if compareStrings(command.command, "servo") then
+						answerCommand("get servo: not implemented yet");
+
+
+					---------------------------------------------------- counter
+					if compareStrings(command.command, "counter") then
+						answerCommand("get counter: not implemented yet");
+
+
+					------------------------------------------- centerCorrection
+					if compareStrings(command.command, "centerCorrection") then
+						answerCommand("get centerCorrection: not implemented yet");
+
+
+					------------------------------------------- initCounterValue
+					if compareStrings(command.command, "initCounterValue") then
+						answerCommand("get initCounterValue: not implemented yet");
+
+
+					---------------------------------------------------- damping
+					if compareStrings(command.command, "damping") then
+						answerCommand("get damping: not implemented yet");
+
+
+					-------------------------------------------------- dutycycle
+					if compareStrings(command.command, "dutycycle") then
+						answerCommand("get dutycycle: not implemented yet");
+
+
+					else
+						answerCommand("Unknown Command");
+
+					end if;
+
 				end if;
 
 			elsif (inBuffer.bufferPointer /= lastSentInBufferPointer) then

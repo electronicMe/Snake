@@ -112,8 +112,10 @@ architecture Snake_a of Snake is
 	--========================================================================--
 
 
-	-- Global active low reset signal.
+	-- Global active low reset signal caused by user
 	signal s_RESET           : std_logic;
+	-- Global active high reset signal caused by UARTCommunicator
+	signal s_reset2          : std_logic;
 
 
 	-- Each '1' bit activates the corresponding servo. Servos in ascending order: Servo S1 to Servo S26.
@@ -246,6 +248,8 @@ architecture Snake_a of Snake is
 
 	-- The tick signal generated from the prescaler. Drives the counters.
 	signal s_TICK            : std_logic;
+	-- The tick signal generated from the UARTCommunicator. Drives the counters.
+	signal s_TICK2           : std_logic;
 
 	-- Alternative tick signal from the UARTCommander. Drives the counters.
 	signal s_step            : std_logic;
@@ -278,7 +282,9 @@ begin
 	GPIO_1(1) <= TX;
 	LEDG(1)   <= TX;
 
-	s_RESET <= SW(1);
+	s_RESET   <= NOT (SW(1) OR s_reset2);
+
+	GPIO_1(9) <= CLOCK_50;
 
 	--LEDG(2) <= '0';
 	--LEDG(3) <= (SW(0) XOR (s_pwmSignal(0) AND s_activateServo(0)));    -- S1
@@ -336,14 +342,16 @@ begin
 																					  damping           => s_damping,
 																					  LUT               => s_LUT,
 																					  dutycycle         => s_dutycycle,
-																					  step              => s_step,
 																					  counter           => s_counter,
+
+																					  step              => s_TICK2,
+																					  reset             => s_reset2,
 
 																					  RX                => RX,
 																					  TX                => TX,
 
-																					  debug             => LEDG(9 downto 2),
-																					  debug2            => SW(9 downto 2)
+																					  debug             => GPIO_1(5),
+																					  debug2            => GPIO_1(7)
 																					 );
 
 
@@ -367,7 +375,7 @@ begin
 	--GEN_COUNTERS: for i in 0 to (numServos - 1) generate
 
 	--	counter_x: entity work.counter(counter_a)	generic map (maxValue_g   => c_counterMaxValue)
-	--												port map     (CLK          => ((s_TICK AND s_activateCounter(i)) OR s_step),
+	--												port map     (CLK          => ((s_TICK AND s_activateCounter(i)) OR s_TICK2),
 	--															   RESET_n      => s_RESET,
 	--															   initialValue => s_initCounterVals(i),
 	--															   TC           => s_counter(i)
