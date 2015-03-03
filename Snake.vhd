@@ -28,12 +28,30 @@ entity Snake is
 
 	);
 
+	-- ports for DE0
+	--port (
+	--	CLOCK_50 : in  std_logic;
+	--	SW       : in  std_logic_vector(9  downto 0);
+	--	LEDG     : out std_logic_vector(9  downto 0);
+	--	GPIO_0   : inout std_logic_vector(31 downto 0);
+	--	GPIO_1   : inout std_logic_vector(31 downto 0)
+	--);
+
+	-- ports for DE0-Nano
 	port (
-		CLOCK_50 : in  std_logic;
-		SW       : in  std_logic_vector(9  downto 0);
-		LEDG     : out std_logic_vector(9  downto 0);
-		GPIO_0   : inout std_logic_vector(31 downto 0);
-		GPIO_1   : inout std_logic_vector(31 downto 0)
+		CLOCK_50 : IN    std_logic;
+		LED      : OUT   std_logic_vector(7  downto 0);
+		GPIO_0   : INOUT std_logic_vector(33 downto 0);
+		GPIO_1   : INOUT std_logic_vector(33 downto 0);
+
+		-- SW(0) : invert servo PWM output
+		-- SW(1) : center all servos (not implemented yet)
+		-- SW(2) : global reset
+		-- SW(3) : unused
+		SW       : IN    std_logic_vector(3  downto 0);
+
+		-- KEY(0) : global reset
+		KEY      : IN    std_logic_vector(1 downto 0)
 	);
 
 end Snake;
@@ -272,27 +290,28 @@ begin
 	-- SIGNALS                                                                  --
 	--==========================================================================--
 
-	-- GPIO_1(0) = J5_2 = RX
-	-- GPIO_1(1) = J5_4 = TX
-	-- GND       = J5_12
-	GPIO_1(0) <= 'Z';
-	RX        <= GPIO_1(0);
-	LEDG(0)   <= GPIO_1(0);
+	-- DEO-Nano:
+	--
+	-- GPIO_0(32) = JP1_39 = RX
+	-- GPIO_0(30) = JP1_37 = TX
+	-- GPIO_0(28) = JP1_35 = RESET
+	-- GND        = JP1_30
 
-	GPIO_1(1) <= TX;
-	LEDG(1)   <= TX;
+	GPIO_0(32) <= 'Z';
+	RX         <= GPIO_0(32);
+	--LED(0)     <= GPIO_0(32);
 
-	s_RESET   <= NOT (SW(1) OR s_reset2);
+	GPIO_0(30) <= TX;
+	--LED(1)     <= TX;
 
-	GPIO_1(9) <= CLOCK_50;
+	s_RESET    <= NOT (SW(2) OR (NOT KEY(0)) OR s_reset2);
 
-	--LEDG(2) <= '0';
-	--LEDG(3) <= (SW(0) XOR (s_pwmSignal(0) AND s_activateServo(0)));    -- S1
-	--LEDG(4) <= (SW(0) XOR (s_pwmSignal(1) AND s_activateServo(1)));    -- S2
-	--LEDG(5) <= '1';
-	--LEDG(6) <= '0';
-	--LEDG(7) <= '1';
-	--LEDG(8) <= '0';
+	--LED(2) <= '0';
+	--LED(3) <= (SW(0) XOR (s_pwmSignal(0) AND s_activateServo(0)));    -- S1
+	--LED(4) <= (SW(0) XOR (s_pwmSignal(1) AND s_activateServo(1)));    -- S2
+	--LED(5) <= '1';
+	--LED(6) <= s_RESET;
+	--LED(7) <= NOT s_RESET;
 
 
 
@@ -350,7 +369,7 @@ begin
 																					  RX                => RX,
 																					  TX                => TX,
 
-																					  debug             => GPIO_1(5),
+																					  debug             => LED,
 																					  debug2            => GPIO_1(7)
 																					 );
 
