@@ -5,20 +5,17 @@
 --  Created by Sebastian Mach on 06.01.15.
 --  Copyright (c) 2015. All rights reserved.
 --
---  Resources:
---  .) http://www.stefanvhdl.com/vhdl/vhdl/txt_util.vhd
---  .) http://de.wikibooks.org/wiki/VHDL#records
---  .) http://www.mrc.uidaho.edu/mrc/people/jff/vhdl_info/txt_util.vhd
---  .) DataTypes - http://cseweb.ucsd.edu/~tweng/cse143/VHDLReference/04.pdf
---  .) http://courses.cs.washington.edu/courses/cse477/00sp/projectwebs/groupb/Anita/WorkingFolder5-24-2330pm/ToPS2/LedRegister/LEDREG/CONV.VHD
---
 
 
 library IEEE;
 use IEEE.std_logic_1164.all;
-use work.Arrays_pkg.all;
 use std.textio.all;
 use ieee.numeric_std.all;
+
+use work.Snake_pkg.all;
+use work.Arrays_pkg.all;
+use work.Buffer_pkg.all;
+use work.UART_pkg.all;
 
 
 
@@ -29,23 +26,21 @@ entity UARTCommunicator is
 
 generic (
 	BAUD_RATE_g       : positive := 115200;
-	CLOCK_FREQUENCY_g : positive := 50000000;
-	numServos_g       : integer  := 26;
-
-	bufferSize_g      : positive := 10
+	CLOCK_FREQUENCY_g : positive := 50000000
 );
+
 port (
 	CLK               : in std_logic;
 	RESET_n           : in std_logic;
 
-	activateServo     : inout std_logic_vector(numServos_g - 1 downto 0);
-	activateCounter   : inout std_logic_vector(numServos_g - 1 downto 0);
-	centerCorrections : inout INT_ARRAY(numServos_g - 1 downto 0);
-	initCounterVals   : inout INT_ARRAY(numServos_g - 1 downto 0);
-	damping           : inout INT_ARRAY(numServos_g - 1 downto 0);
-	LUT               : in    INT_ARRAY(numServos_g - 1 downto 0);
-	dutycycle         : inout INT_ARRAY(numServos_g - 1 downto 0);
-	counter           : in    INT_ARRAY(numServos_g - 1 downto 0);
+	activateServo     : inout std_logic_vector(numServos_c - 1 downto 0);
+	activateCounter   : inout std_logic_vector(numServos_c - 1 downto 0);
+	centerCorrections : inout INT_ARRAY(numServos_c - 1 downto 0);
+	initCounterVals   : inout INT_ARRAY(numServos_c - 1 downto 0);
+	damping           : inout INT_ARRAY(numServos_c - 1 downto 0);
+	LUT               : in    INT_ARRAY(numServos_c - 1 downto 0);
+	dutycycle         : inout INT_ARRAY(numServos_c - 1 downto 0);
+	counter           : in    INT_ARRAY(numServos_c - 1 downto 0);
 
 	step              : out   std_logic;
 	reset             : out   std_logic;
@@ -68,7 +63,11 @@ architecture UARTCommunicator_a of UARTCommunicator is
 
 
 
-	--========================================================================--
+
+
+
+
+    --========================================================================--
 	-- TYPE DEFINITIONS                                                       --
 	--========================================================================--
 
@@ -99,151 +98,14 @@ architecture UARTCommunicator_a of UARTCommunicator is
 								uartSendState_waitForACK
 						  );
 
-	type buffer_t is record
-		-- Holds the buffer content
-		bufferContent : string(1 to bufferSize_g);
-
-		-- A pointer to the element in bufferContent to read/write from/to
-		bufferPointer : positive;
-
-		-- Holds the number of elements in bufferContent
-		contentSize   : integer range 0 to bufferSize_g;
-	end record;
-
-	type command_t is record
-		command : string(1 to bufferSize_g);
-		id      : integer range 0 to numServos_g - 1;
-		value   : integer;
-	end record;
-
 
 
 
 
 
 	--========================================================================--
-	-- SIGNALS                                                                --
+	-- FUNCTION DEFINITIONS                                                   --
 	--========================================================================--
-
-	signal RESET_nn                 : std_logic;
-
-	signal s_runMode                : runMode        := runMode_stopped;
-	signal s_commandMode            : commandMode    := commandMode_home;
-	signal s_commandSubMode         : commandSubMode := commandSubMode_runMode;
-	signal s_uartSendState          : uartSendState  := uartSendState_start;
-	signal s_commandProcessWasReset : std_logic      := '1';
-
-
-	------------------------------------------------------------------UART INPUT
-	signal inBuffer                : buffer_t  := ((others => '0'), 1, 0);
-	signal processInBuffer         : std_logic := '0';
-	signal lastSentInBufferPointer : positive  :=  1;
-	constant commandTerminator     : character := CR;
-
-
-	-----------------------------------------------------------------UART OUTPUT
-	signal outBuffer        : buffer_t  := ((others => '0'), 1, 0);
-	signal sendBuffer       : buffer_t  := ((others => '0'), 1, 0);
-	signal readyToSend      : std_logic := '0';
-	signal commandProcessed : std_logic := '0';
-
-
-	----------------------------------------------------------------UART Signals
-	signal DATA_STREAM_IN      : std_logic_vector(7 downto 0) := (others => '0');
-	signal DATA_STREAM_IN_STB  : std_logic := '0';
-	signal DATA_STREAM_IN_ACK  : std_logic;
-	signal DATA_STREAM_OUT     : std_logic_vector(7 downto 0);
-	signal DATA_STREAM_OUT_STB : std_logic;
-	signal DATA_STREAM_OUT_ACK : std_logic := '1';
-
-
-
-
-
-
-	--========================================================================--
-	-- FUNCTIONS                                                              --
-	--========================================================================--
-
-
-	-- From STD_LOGIC_VECTOR to CHARACTER converter
-	-- Source: http://courses.cs.washington.edu/courses/cse477/00sp/projectwebs/groupb/Anita/WorkingFolder5-24-2330pm/ToPS2/LedRegister/LEDREG/CONV.VHD
-	function CONV (X :STD_LOGIC_VECTOR (7 downto 0)) return CHARACTER is
-		constant XMAP :INTEGER :=0;
-		variable TEMP :INTEGER :=0;
-	begin
-		for i in X'RANGE loop
-			TEMP:=TEMP*2;
-			case X(i) is
-				when '0' | 'L'  => null;
-				when '1' | 'H'  => TEMP :=TEMP+1;
-				when others     => TEMP :=TEMP+XMAP;
-			end case;
-		end loop;
-		return CHARACTER'VAL(TEMP);
-	end CONV;
-
-
-	-- From CHARACTER to STD_LOGIC_VECTOR (7 downto 0) converter
-	-- Source: http://courses.cs.washington.edu/courses/cse477/00sp/projectwebs/groupb/Anita/WorkingFolder5-24-2330pm/ToPS2/LedRegister/LEDREG/CONV.VHD
-	function CONV (X :CHARACTER) return STD_LOGIC_VECTOR is
-		variable RESULT :STD_LOGIC_VECTOR (7 downto 0);
-		variable TEMP   :INTEGER :=CHARACTER'POS(X);
-	begin
-		for i in RESULT'REVERSE_RANGE loop
-			case TEMP mod 2 is
-				when 0 => RESULT(i):='0';
-				when 1 => RESULT(i):='1';
-				when others => null;
-			end case;
-			TEMP:=TEMP/2;
-		end loop;
-		return RESULT;
-	end CONV;
-
-
-	------------------------------------------------------------- compareStrings
-	-- Compares two strings, also with different sizes.
-	-- Retrurns TRUE if the two strings are equal (case sensitive).
-	-- If one string is longer than the other, this function returns TRUE
-	-- when the rest of the longer string is filled with NUL values
-	function compareStrings (str1: string;
-							  str2: string
-							 ) return boolean is
-		variable loopCount : positive;
-		variable char1     : character;
-		variable char2     : character;
-	begin
-		if (str1'length < str2'length) then
-			loopCount := str2'length;
-		else -- if str1'length > str2'length OR str1'length = str2'length
-			loopCount := str1'length;
-		end if;
-
-		for i in 1 to loopCount loop
-			if (i > str1'length) then
-				char1 := NUL;
-			else
-				char1 := str1(i);
-			end if;
-
-
-			if (i > str2'length) then
-				char2 := NUL;
-			else
-				char2 := str2(i);
-			end if;
-
-
-			if (char1 /= char2) then
-				return FALSE;
-			end if;
-		end loop;
-
-		return TRUE;
-	end compareStrings;
-
-
 
 	---------------------------------------------------------- stringFromRunMode
 	function stringFromRunMode (rm: runMode) return string is
@@ -310,215 +172,43 @@ architecture UARTCommunicator_a of UARTCommunicator is
 
 
 
-	---------------------------------------------------------------- stringToInt
-	function stringToInt (str: string(1 to bufferSize_g)) return integer is
-		variable value          : integer := 1;
-		variable coefficient    : integer := 1;
-		variable index          : integer range 1 to bufferSize_g := 1;
-		variable characterValue : integer := 0;
-	begin
-		--debug(1) <= '1';
-
-		--for i in 0 to (str'length - 1) loop
-		--	index := str'length - i;
-		--	characterValue := CHARACTER'POS(str(index)) - 48;
-
-		--	if ((characterValue >= 0) AND (characterValue <= 10)) then
-		--		value := value + (characterValue * coefficient);
-		--		coefficient := coefficient * 10;
-		--	end if;
-
-		--end loop;
-
-		--debug(6) <= '1';
-
-		return value;
-	end stringToInt;
-
-
-
-	-------------------------------------------------------------- stringToInt16
-	function stringToInt16 (str: string(1 to 2);
-                            min: integer;
-                            max: integer
-                           ) return integer is
-		variable valueVector : std_logic_vector(15 downto 0);
-		variable byte1       : std_logic_vector(7 downto 0);
-		variable byte2       : std_logic_vector(7 downto 0);
-        variable value       : integer;
-	begin
-		byte1 := std_logic_vector(to_unsigned(CHARACTER'POS(str(1)), 8));
-		byte2 := std_logic_vector(to_unsigned(CHARACTER'POS(str(2)), 8));
-
-		valueVector := byte1 & byte2;
-
-		value := to_integer(signed(valueVector));
-
-        if (value < min) then
-            return min;
-        elsif (value > max) then
-            return max;
-        else
-            return value;
-        end if;
-	end stringToInt16;
-
-
-
-
-
 
 
 
 	--========================================================================--
-	-- PROCEDURES                                                             --
+	-- SIGNALS                                                                --
 	--========================================================================--
 
+	signal RESET_nn                 : std_logic;
 
-	-------------------------------------------------------------------setString
-	procedure setString ( variable theString : inout string;
-						  constant newValue  : in    string
-						 ) is
-	begin
-		for i in 1 to theString'length loop
-			if (i < newValue'length) then
-				theString(i) := newValue(i);
-			else
-				theString(i) := NUL;
-			end if;
-		end loop;
-	end procedure setString;
+	signal s_runMode                : runMode        := runMode_stopped;
+	signal s_commandMode            : commandMode    := commandMode_home;
+	signal s_commandSubMode         : commandSubMode := commandSubMode_runMode;
+	signal s_uartSendState          : uartSendState  := uartSendState_start;
+	signal s_commandProcessWasReset : std_logic      := '1';
 
 
-	-------------------------------------------------------------appendCharacter
-	-- Writes data to the position of the buffer pointer and sets the pointer
-	-- to the next character
-	procedure appendCharacter ( signal   theBuffer : inout buffer_t;
-								 variable data      : in    character
-							   ) is
-	begin
-		if ((theBuffer.contentSize < bufferSize_g) AND (data /= LF)) then
-			theBuffer.bufferContent(theBuffer.bufferPointer) <= data;
-			theBuffer.bufferPointer <= theBuffer.bufferPointer + 1;
-			theBuffer.contentSize   <= theBuffer.contentSize   + 1;
-		end if;
-	end procedure appendCharacter;
+	------------------------------------------------------------------UART INPUT
+	signal inBuffer                : buffer_t  := ((others => '0'), 1, 0);
+	signal processInBuffer         : std_logic := '0';
+	signal lastSentInBufferPointer : positive  :=  1;
+	constant commandTerminator     : character := CR;
 
 
-	-----------------------------------------------------------------resetBuffer
-	procedure resetBuffer( signal theBuffer : out buffer_t) is
-	begin
-		theBuffer <= ((others => NUL), 1, 0);
-	end procedure resetBuffer;
+	-----------------------------------------------------------------UART OUTPUT
+	signal outBuffer        : buffer_t  := ((others => '0'), 1, 0);
+	signal sendBuffer       : buffer_t  := ((others => '0'), 1, 0);
+	signal readyToSend      : std_logic := '0';
+	signal commandProcessed : std_logic := '0';
 
 
-	------------------------------------------------------------------readBuffer
-	-- Reads the character at the position of the buffer pointer and sets the
-	-- pointer to the next character
-	procedure readBuffer( signal theBuffer : inout buffer_t;
-						   signal data      : out   std_logic_vector(7 downto 0)
-						 ) is
-	begin
-
-		if (theBuffer.bufferPointer <= theBuffer.contentSize) then
-			data <= CONV(theBuffer.bufferContent(theBuffer.bufferPointer));
-			theBuffer.bufferPointer <= theBuffer.bufferPointer + 1;
-		else
-			data <= (others => '0');
-		end if;
-	end procedure readBuffer;
-
-
-	-----------------------------------------------------------------writeBuffer
-	procedure writeBuffer( signal   theBuffer : inout buffer_t;
-							variable data      : in     string
-						  ) is
-		variable bufferPointer : natural := 1;
-		variable contentSize   : natural := 0;
-	begin
-
-		-- check for buffer overflow
-		if (data'length <= bufferSize_g) then
-
-			theBuffer.bufferContent <= (others => NUL);
-
-			copyLoop: for i in 1 to data'length loop
-				exit copyLoop when (data(i) = NUL);
-
-				theBuffer.bufferContent(bufferPointer) <= data(i);
-				bufferPointer := bufferPointer + 1;
-				contentSize   := contentSize   + 1;
-			end loop;
-
-			theBuffer.bufferPointer <= bufferPointer;
-			theBuffer.contentSize   <= contentSize;
-		end if;
-	end procedure writeBuffer;
-
-
-	---------------------------------------------------------------answerCommand
-	-- This procedure should only be called by the p_commandProcessor process
-	-- to send an aswer of a command
-	procedure answerCommand ( constant answer : in    string;
-							  signal   outb   : inout buffer_t;
-							  signal   rts    : out   std_logic;
-							  signal   cp     : out   std_logic
-							) is
-		variable data : string(1 to bufferSize_g) := (others => NUL);
-	begin
-		setString(data, CR & LF & answer & CR & LF & '>');
-		writeBuffer(outb, data);
-		rts <= '1';
-		cp  <= '1';
-	end procedure answerCommand;
-
-
-	------------------------------------------------------------------copyBuffer
-	-- Copies the source buffer to the destination buffer and sets the pointer
-	-- of the destination buffer to 1
-	procedure copyBuffer( signal sourceBuffer      : in buffer_t;
-						  signal destinationBuffer : out buffer_t
-						 ) is
-	begin
-		destinationBuffer.bufferContent <= sourceBuffer.bufferContent;
-		destinationBuffer.contentSize   <= sourceBuffer.contentSize;
-		destinationBuffer.bufferPointer <= 1;
-	end procedure copyBuffer;
-
-
-	------------------------------------------------------------------parseInput
-	procedure parseInput( signal   input   : in string;
-						  variable command : out command_t
-						) is
-		variable stringBuffer : string(1 to bufferSize_g) := (others => NUL);
-
-		variable commandLength : integer := 0;
-		variable idLength      : integer := 0;
-		variable valueLength   : integer := 0;
-	begin
-
-		-- get command from input
-		commandLoop: for i in 1 to input'length loop
-			-- loop until space or NUL character
-			exit commandLoop when (input(i) = ' ');
-            exit commandLoop when (input(i) = NUL);
-
-			stringBuffer(i) := input(i);
-			commandLength := i;
-		end loop;
-
-		command.command := stringBuffer;
-
-
-		-- get id from input
-		command.id := stringToInt16(input(commandLength + 2 to commandLength + 3), 0, numServos_g - 1);
-
-
-		-- get value from input
-		command.value := stringToInt16(input(commandLength + 5 to commandLength + 6), INTEGER'low, INTEGER'high);
-
-	end procedure parseInput;
-
+	----------------------------------------------------------------UART Signals
+	signal DATA_STREAM_IN      : std_logic_vector(7 downto 0) := (others => '0');
+	signal DATA_STREAM_IN_STB  : std_logic := '0';
+	signal DATA_STREAM_IN_ACK  : std_logic;
+	signal DATA_STREAM_OUT     : std_logic_vector(7 downto 0);
+	signal DATA_STREAM_OUT_STB : std_logic;
+	signal DATA_STREAM_OUT_ACK : std_logic := '1';
 
 
 begin
@@ -556,22 +246,22 @@ begin
 
 		case s_runMode is
 			when runMode_stopped    => --------------------------runMode_stopped
-				--for i in 0 to (numServos_g - 1) loop
+				--for i in 0 to (numServos_c - 1) loop
                 --    activateServo(i) <= '1';
                 --    activateCounter(i) <= '0';
                 --end loop;
 			when runMode_centering  => ------------------------runMode_centering
-				--for i in 0 to (numServos_g - 1) loop
+				--for i in 0 to (numServos_c - 1) loop
                 --    activateServo(i) <= '1';
                 --    activateCounter(i) <= '0';
 				--end loop;
 			when runMode_singleStep => -----------------------runMode_singleStep
-				--for i in 0 to (numServos_g - 1) loop
+				--for i in 0 to (numServos_c - 1) loop
                 --    activateServo(i) <= '1';
                 --    activateCounter(i) <= '0';
 				--end loop;
 			when runMode_running    => --------------------------runMode_running
-				--for i in 0 to (numServos_g - 1) loop
+				--for i in 0 to (numServos_c - 1) loop
                 --    activateServo(i) <= '1';
                 --    activateCounter(i) <= '1';
                 --end loop;
@@ -678,7 +368,7 @@ begin
 	--========================================================================--
 	p_commandProcessor: process(CLK, RESET_n)
 		variable command : command_t;
-		variable data    : string(1 to bufferSize_g) := (others => NUL);
+		variable data    : string(1 to bufferSize_c) := (others => NUL);
 	begin
 
 		if (RESET_n = '0') then
@@ -775,7 +465,7 @@ begin
 					------------------------------------------------------ servo
 					elsif compareStrings(command.command, "servo") then
 
-						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+						if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("get servo: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
 							answerCommand("activateServo " & integer'image(command.id) & " = ?", outBuffer, readyToSend, commandProcessed);
@@ -785,7 +475,7 @@ begin
 					---------------------------------------------------- counter
 					elsif compareStrings(command.command, "counter") then
 
-						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+						if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("get counter: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
 							answerCommand("activateCounter " & integer'image(command.id) & " = ?", outBuffer, readyToSend, commandProcessed);
@@ -796,7 +486,7 @@ begin
 					------------------------------------------- centerCorrection
 					elsif compareStrings(command.command, "centerCorrection") then
 
-						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+						if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("get centerCorrection: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
 							answerCommand("centerCorrection " & integer'image(command.id) & " = " & integer'image(centerCorrections(command.id)), outBuffer, readyToSend, commandProcessed);
@@ -806,7 +496,7 @@ begin
 					------------------------------------------- initCounterValue
 					elsif compareStrings(command.command, "initCounterValue") then
 
-						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+						if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("get initCounterValue: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
 							answerCommand("get initCounterValue: not implemented yet", outBuffer, readyToSend, commandProcessed);
@@ -816,7 +506,7 @@ begin
 					---------------------------------------------------- damping
 					elsif compareStrings(command.command, "damping") then
 
-						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+						if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("get damping: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
 							answerCommand("get damping: not implemented yet", outBuffer, readyToSend, commandProcessed);
@@ -826,7 +516,7 @@ begin
 					-------------------------------------------------------- LUT
 					elsif compareStrings(command.command, "LUT") then
 
-						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+						if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("get LUT: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
 							answerCommand("get LUT: not implemented yet", outBuffer, readyToSend, commandProcessed);
@@ -836,7 +526,7 @@ begin
 					-------------------------------------------------- dutycycle
 					elsif compareStrings(command.command, "dutycycle") then
 
-						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+						if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("get dutycycle: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
 							answerCommand("get dutycycle: not implemented yet", outBuffer, readyToSend, commandProcessed);
@@ -859,7 +549,7 @@ begin
 					------------------------------------------------------ servo
 					elsif compareStrings(command.command, "servo") then
 
-                        if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+                        if ((command.id < 0) OR (command.id > numServos_c - 1)) then
 							answerCommand("set servo: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
                             if (command.value = 0) then

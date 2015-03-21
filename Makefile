@@ -12,9 +12,17 @@ STD__textio = $(LIB_STD)/textio/_primary.dat
 IEEE__numeric_std = $(LIB_IEEE)/numeric_std/_primary.dat
 WORK__uartcommunicator_tb__uartcommunicator_tb_a = $(LIB_WORK)/uartcommunicator_tb/uartcommunicator_tb_a.dat
 WORK__uartcommunicator_tb = $(LIB_WORK)/uartcommunicator_tb/_primary.dat
+WORK__uartcommunicator__uartcommunicator_a = $(LIB_WORK)/uartcommunicator/uartcommunicator_a.dat
 WORK__uartcommunicator = $(LIB_WORK)/uartcommunicator/_primary.dat
+WORK__uart_pkg__body = $(LIB_WORK)/uart_pkg/body.dat
+WORK__uart_pkg = $(LIB_WORK)/uart_pkg/_primary.dat
+WORK__uart_generic_pkg__body = $(LIB_WORK)/uart_generic_pkg/body.dat
+WORK__uart_generic_pkg = $(LIB_WORK)/uart_generic_pkg/_primary.dat
 WORK__uart__rtl = $(LIB_WORK)/uart/rtl.dat
 WORK__uart = $(LIB_WORK)/uart/_primary.dat
+WORK__snake_pkg = $(LIB_WORK)/snake_pkg/_primary.dat
+WORK__buffer_pkg = $(LIB_WORK)/buffer_pkg/_primary.dat
+WORK__buffer_generic_pkg = $(LIB_WORK)/buffer_generic_pkg/_primary.dat
 WORK__arrays_pkg = $(LIB_WORK)/arrays_pkg/_primary.dat
 VCOM = vcom
 VLOG = vlog
@@ -24,16 +32,38 @@ VSIM = vsim
 
 whole_library :     $(WORK__uartcommunicator_tb__uartcommunicator_tb_a) \
     $(WORK__uartcommunicator_tb) \
+    $(WORK__uartcommunicator__uartcommunicator_a) \
     $(WORK__uartcommunicator) \
+    $(WORK__uart_pkg__body) \
+    $(WORK__uart_pkg) \
     $(WORK__uart__rtl) \
     $(WORK__uart) \
+    $(WORK__snake_pkg) \
+    $(WORK__buffer_pkg) \
     $(WORK__arrays_pkg)
 
 $(WORK__arrays_pkg) : ArraysPKG.vhd \
 		$(IEEE__numeric_std) \
 		$(STD__textio) \
 		$(IEEE__std_logic_1164)
-	$(VCOM) -explicit -93 -O0 ArraysPKG.vhd
+	$(VCOM) -explicit -2008 -O0 ArraysPKG.vhd
+
+$(WORK__buffer_generic_pkg) : Buffer_generic_pkg.vhd \
+		$(WORK__snake_pkg) \
+		$(IEEE__numeric_std) \
+		$(STD__textio) \
+		$(IEEE__std_logic_1164)
+	$(VCOM) -explicit -2008 -O0 Buffer_generic_pkg.vhd
+
+$(WORK__buffer_pkg) : Buffer_pkg.vhd \
+		$(WORK__snake_pkg) \
+		$(IEEE__numeric_std) \
+		$(STD__textio) \
+		$(IEEE__std_logic_1164)
+	$(VCOM) -explicit -2008 -O0 Buffer_pkg.vhd
+
+$(WORK__snake_pkg) : Snake_pkg.vhd
+	$(VCOM) -explicit -2008 -O0 Snake_pkg.vhdl
 
 $(WORK__uart) \
 $(WORK__uart__rtl) : uart.vhd \
@@ -41,24 +71,44 @@ $(WORK__uart__rtl) : uart.vhd \
 		$(IEEE__numeric_std) \
 		$(STD__textio) \
 		$(IEEE__std_logic_1164)
-	$(VCOM) -explicit -93 -O0 uart.vhd
+	$(VCOM) -explicit -2008 -O0 uart.vhd
 
-$(WORK__uartcommunicator) : UARTCommunicator.vhd \
+$(WORK__uart_generic_pkg) \
+$(WORK__uart_generic_pkg__body) \
+$(WORK__uart_pkg) \
+$(WORK__uart_pkg__body) : UART_pkg.vhd \
+		$(WORK__buffer_pkg) \
+		$(WORK__snake_pkg) \
 		$(IEEE__numeric_std) \
-		$(WORK__arrays_pkg) \
 		$(STD__textio) \
 		$(IEEE__std_logic_1164)
-	$(VCOM) -explicit -93 -O0 UARTCommunicator.vhd
+	$(VCOM) -explicit -2008 -O0 UART_pkg.vhd
+
+$(WORK__uartcommunicator) \
+$(WORK__uartcommunicator__uartcommunicator_a) : UARTCommunicator.vhd \
+		$(IEEE__math_real) \
+		$(WORK__uart) \
+		$(WORK__uart_pkg) \
+		$(WORK__buffer_pkg) \
+		$(WORK__arrays_pkg) \
+		$(WORK__snake_pkg) \
+		$(IEEE__numeric_std) \
+		$(STD__textio) \
+		$(IEEE__std_logic_1164)
+	$(VCOM) -explicit -2008 -O0 UARTCommunicator.vhd
 
 $(WORK__uartcommunicator_tb) \
 $(WORK__uartcommunicator_tb__uartcommunicator_tb_a) : UARTCommunicator_TB.vhd \
+		$(WORK__uart_pkg) \
+		$(WORK__buffer_pkg) \
 		$(WORK__uartcommunicator) \
 		$(WORK__arrays_pkg) \
+		$(WORK__snake_pkg) \
 		$(IEEE__numeric_std) \
 		$(STD__textio) \
 		$(IEEE__std_logic_1164)
-	$(VCOM) -explicit -93 -O0 UARTCommunicator_TB.vhd
+	$(VCOM) -explicit -2008 -O0 UARTCommunicator_TB.vhd
 
 sim:
-	$(VSIM) work.uartcommunicator_tb
+		$(VSIM) work.uartcommunicator_tb
 

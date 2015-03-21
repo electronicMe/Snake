@@ -10,6 +10,8 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
+
+use work.Snake_pkg.all;
 use work.Arrays_pkg.all;
 
 
@@ -18,15 +20,6 @@ use work.Arrays_pkg.all;
 
 
 entity Snake is
-
-	generic (
-
-		-- The number of servos connected to the I/O Board.
-		-- WARNING: when changing this value, the constants "c_servoPorts", "c_centerCorrections" and "c_activateServo"
-		--          have to be updated too!
-		numServos : integer := 26
-
-	);
 
 	-- ports for DE0
 	--port (
@@ -94,7 +87,7 @@ architecture Snake_a of Snake is
 
 	-- Contains the GPIO port of each servo. Ports lower than 100 mean GPIO_0 and higher than or
 	-- equal to 100 mean GPIO_1
-	constant c_servoPorts : INT_ARRAY(numServos - 1 downto 0) :=  (   106,	-- S1
+	constant c_servoPorts : INT_ARRAY(numServos_c - 1 downto 0) :=  (   106,	-- S1
 																		024,	-- S2
 																		109,	-- S3
 																		025,	-- S4
@@ -139,7 +132,7 @@ architecture Snake_a of Snake is
 
 
 	-- Each '1' bit activates the corresponding servo. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_activateServo   : std_logic_vector(numServos - 1 downto 0) := ('1',	-- S1
+	signal s_activateServo   : std_logic_vector(numServos_c - 1 downto 0) := ('1',	-- S1
 																			'1',	-- S2
 																			'0',	-- S3
 																			'0',	-- S4
@@ -168,10 +161,10 @@ architecture Snake_a of Snake is
 																			);
 
 	-- Each '1' bit activates the corresponding counter. Counters in ascending order: Counter 0 to Counter 25
-	signal s_activateCounter : std_logic_vector(numServos - 1 downto 0) := (others => '1');
+	signal s_activateCounter : std_logic_vector(numServos_c - 1 downto 0) := (others => '1');
 
 	-- Contains the center correction of each servo. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_centerCorrections : INT_ARRAY(numServos - 1 downto 0) := (   0,		-- S1
+	signal s_centerCorrections : INT_ARRAY(numServos_c - 1 downto 0) := (   0,		-- S1
 																			0,		-- S2
 																			0,		-- S3
 																			0,		-- S4
@@ -200,7 +193,7 @@ architecture Snake_a of Snake is
 																	);
 
 	-- The initial value of each servo counter. Causes an phase shift. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_initCounterVals : INT_ARRAY(numServos - 1 downto 0) := (     0,		-- S1
+	signal s_initCounterVals : INT_ARRAY(numServos_c - 1 downto 0) := (     0,		-- S1
 																			0,		-- S2
 																			0,	-- S3
 																			0,	-- S4
@@ -229,7 +222,7 @@ architecture Snake_a of Snake is
 																	  );
 
 	-- Contains the reduction of the PWM on and off times of the servos. Causes a damp of the altitution of the signal.
-	signal s_damping : INT_ARRAY(numServos - 1 downto 0) := (             0,			-- S1
+	signal s_damping : INT_ARRAY(numServos_c - 1 downto 0) := (             0,			-- S1
 																			0,			-- S2
 																			350000,		-- S3
 																			350000,		-- S4
@@ -258,13 +251,13 @@ architecture Snake_a of Snake is
 															  );
 
 	-- The PWM Signals for the servos
-	signal s_pwmSignal       : std_logic_vector(numServos - 1 downto 0);
+	signal s_pwmSignal       : std_logic_vector(numServos_c - 1 downto 0);
 
 	-- The LUT output signal of the look up table. Is mapped over UARTCommander to s_dutycycle
-	signal s_LUT             : INT_ARRAY(numServos - 1 downto 0);
+	signal s_LUT             : INT_ARRAY(numServos_c - 1 downto 0);
 
 	-- The dutycycle output signal from the UARTCommunicator. Is mapped to the servos.
-	signal s_dutycycle       : INT_ARRAY(numServos - 1 downto 0);
+	signal s_dutycycle       : INT_ARRAY(numServos_c - 1 downto 0);
 
 	-- The tick signal generated from the prescaler. Drives the counters.
 	signal s_TICK            : std_logic;
@@ -275,7 +268,7 @@ architecture Snake_a of Snake is
 	signal s_step            : std_logic;
 
 	-- The output value from the counters. Drives the look up tables.
-	signal s_counter         : INT_ARRAY(numServos - 1 downto 0);
+	signal s_counter         : INT_ARRAY(numServos_c - 1 downto 0);
 
 
 	signal RX                : std_logic;
@@ -308,7 +301,7 @@ begin
 
 	s_RESET    <= NOT (SW(2) OR (NOT KEY(0)) OR s_reset2);
 
-	
+
     LED(0) <= s_activateServo(0);
     LED(1) <= s_activateServo(1);
     LED(2) <= s_activateServo(2);
@@ -329,7 +322,7 @@ begin
 	--==========================================================================--
 
 	-- Disabled to fit on DE0 Board
-	--GEN_SERVOMAP: for i in 0 to (numServos - 1) generate
+	--GEN_SERVOMAP: for i in 0 to (numServos_c - 1) generate
 
 	--	PORT0_SEL: if (c_servoPorts(i) < 100) generate
 	--		-- GPIO_0
@@ -353,9 +346,7 @@ begin
 	--==========================================================================--
 
 	uartCommunicator: entity work.UARTCommunicator(UARTCommunicator_a) generic map (BAUD_RATE_g        => 115200,
-																					  CLOCK_FREQUENCY_g  => 50000000,
-																					  numServos_g        => numServos,
-																					  bufferSize_g       => 255
+																					  CLOCK_FREQUENCY_g  => 50000000
 																					 )
 																		port map    (CLK               => CLOCK_50,
 																					  RESET_n           => s_RESET,
@@ -397,7 +388,7 @@ begin
 	-- COUNTERS                                                                 --
 	--==========================================================================--
 
-	--GEN_COUNTERS: for i in 0 to (numServos - 1) generate
+	--GEN_COUNTERS: for i in 0 to (numServos_c - 1) generate
 
 	--	counter_x: entity work.counter(counter_a)	generic map (maxValue_g   => c_counterMaxValue)
 	--												port map     (CLK          => ((s_TICK AND s_activateCounter(i)) OR s_TICK2),
@@ -414,7 +405,7 @@ begin
 	-- LOOK UP TABLE                                                            --
 	--==========================================================================--
 
-	--SinusLUT: entity work.SinusLUT(SinusLUT_a)	generic map	(numberOfLUTs_g => numServos )
+	--SinusLUT: entity work.SinusLUT(SinusLUT_a)	generic map	(numberOfLUTs_g => numServos_c )
 	--											port map     (LUT_IN         => s_counter,
 	--														   LUT_OUT        => s_LUT
 	--														  );
@@ -428,7 +419,7 @@ begin
 	--==========================================================================--
 
 
-	--GEN_SERVOS: for i in 0 to (numServos - 1) generate
+	--GEN_SERVOS: for i in 0 to (numServos_c - 1) generate
 
 	--	servo_x: entity work.PWMServo(PWMServo_a)	port map	(CLK               => CLOCK_50,
 	--															   RESET_n           => s_RESET,

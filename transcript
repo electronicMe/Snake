@@ -1,0 +1,132 @@
+# vsim work.uartcommunicator_tb 
+# Loading std.standard
+# Loading std.textio(body)
+# Loading ieee.std_logic_1164(body)
+# Loading ieee.numeric_std(body)
+# Loading work.snake_pkg
+# Loading work.arrays_pkg
+# Loading work.buffer_pkg
+# Loading work.uart_pkg(body)
+# Loading work.uartcommunicator_tb(uartcommunicator_tb_a)
+# Loading ieee.math_real(body)
+# Loading work.uartcommunicator(uartcommunicator_a)
+# Loading work.uart(rtl)
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(25) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(24) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(23) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(22) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(21) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(20) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(19) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(18) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(17) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(16) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(15) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(14) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(13) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(12) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(11) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(10) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(9) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(8) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(7) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(6) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(5) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(4) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(3) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(2) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(1) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(0) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+run
+add wave -position end  sim:/uartcommunicator_tb/CLOCK_50
+# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 1 times, errno 11
+# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 2 times, errno 11
+# ** Error: Unable to lock WLF file "vsim.wlf". Retrying 3 times, errno 11
+# ** Error: Cannot lock WLF file: "vsim.wlf"
+#           errno 11: Resource temporarily unavailable.
+# ** Warning: (vsim-WLF-5000) WLF file currently in use: vsim.wlf
+#           File in use by: smach  Hostname: ubuntu  ProcessID: 18572
+#           Attempting to use alternate WLF file "./wlftCxvvcD".
+# ** Warning: (vsim-WLF-5001) Could not open WLF file: vsim.wlf
+#           Using alternate file: ./wlftCxvvcD
+restart -f
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(25) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(24) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(23) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(22) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(21) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(20) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(19) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(18) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(17) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(16) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(15) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(14) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(13) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(12) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(11) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(10) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(9) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(8) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(7) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(6) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(5) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(4) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(3) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(2) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(1) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+# ** Warning: (vsim-8683) Uninitialized inout port /uartcommunicator_tb/uartCommunicator/dutycycle(0) has no driver.
+# This port will contribute value (-2147483648) to the signal network.
+run 1000000 ns
+# Sending String: test  €

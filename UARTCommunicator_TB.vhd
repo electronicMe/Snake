@@ -13,6 +13,8 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use std.textio.all;
 use ieee.numeric_std.all;
+
+use work.Snake_pkg.all;
 use work.Arrays_pkg.all;
 --use work.UARTCommunicator.all;
 
@@ -21,11 +23,6 @@ use work.Arrays_pkg.all;
 entity UARTCommunicator_TB is
 
     generic (
-
-		-- The number of servos connected to the I/O Board.
-		-- WARNING: when changing this value, the constants "c_servoPorts", "c_centerCorrections" and "c_activateServo"
-		--          have to be updated too!
-		numServos : integer := 26;
 
         BAUD_PERIODE_g : time := 8680555 ps
 
@@ -48,7 +45,7 @@ architecture UARTCommunicator_TB_a of UARTCommunicator_TB is
                         ) is
         variable charVector: std_logic_vector(7 downto 0);
     begin
-        
+
         write(OUTPUT, "Sending String: " & str);
 
         for i in 1 to str'length loop
@@ -112,7 +109,7 @@ architecture UARTCommunicator_TB_a of UARTCommunicator_TB is
 
 
 	-- Each '1' bit activates the corresponding servo. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_activateServo   : std_logic_vector(numServos - 1 downto 0);-- := ('0',	-- S1
+	signal s_activateServo   : std_logic_vector(numServos_c - 1 downto 0);-- := ('0',	-- S1
 																		--	'0',	-- S2
 																		--	'0',	-- S3
 																		--	'0',	-- S4
@@ -141,10 +138,10 @@ architecture UARTCommunicator_TB_a of UARTCommunicator_TB is
 																		--	);
 
 	-- Each '1' bit activates the corresponding counter. Counters in ascending order: Counter 0 to Counter 25
-	signal s_activateCounter : std_logic_vector(numServos - 1 downto 0) := (others => '0');
+	signal s_activateCounter : std_logic_vector(numServos_c - 1 downto 0) := (others => '0');
 
 	-- Contains the center correction of each servo. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_centerCorrections : INT_ARRAY(numServos - 1 downto 0) := (     0,		-- S1
+	signal s_centerCorrections : INT_ARRAY(numServos_c - 1 downto 0) := (     0,		-- S1
 																			0,		-- S2
 																			0,		-- S3
 																			0,		-- S4
@@ -173,7 +170,7 @@ architecture UARTCommunicator_TB_a of UARTCommunicator_TB is
 																	);
 
 	-- The initial value of each servo counter. Causes an phase shift. Servos in ascending order: Servo S1 to Servo S26.
-	signal s_initCounterVals : INT_ARRAY(numServos - 1 downto 0) := (       0,		-- S1
+	signal s_initCounterVals : INT_ARRAY(numServos_c - 1 downto 0) := (       0,		-- S1
 																			0,		-- S2
 																			0,	-- S3
 																			0,	-- S4
@@ -202,7 +199,7 @@ architecture UARTCommunicator_TB_a of UARTCommunicator_TB is
 																	  );
 
 	-- Contains the reduction of the PWM on and off times of the servos. Causes a damp of the altitution of the signal.
-	signal s_damping : INT_ARRAY(numServos - 1 downto 0) := (               0,			-- S1
+	signal s_damping : INT_ARRAY(numServos_c - 1 downto 0) := (               0,			-- S1
 																			0,			-- S2
 																			350000,		-- S3
 																			350000,		-- S4
@@ -231,13 +228,13 @@ architecture UARTCommunicator_TB_a of UARTCommunicator_TB is
 															  );
 
 	-- The PWM Signals for the servos
-	signal s_pwmSignal       : std_logic_vector(numServos - 1 downto 0);
+	signal s_pwmSignal       : std_logic_vector(numServos_c - 1 downto 0);
 
 	-- The LUT output signal of the look up table. Is mapped over UARTCommander to s_dutycycle
-	signal s_LUT             : INT_ARRAY(numServos - 1 downto 0);
+	signal s_LUT             : INT_ARRAY(numServos_c - 1 downto 0);
 
 	-- The dutycycle output signal from the UARTCommunicator. Is mapped to the servos.
-	signal s_dutycycle       : INT_ARRAY(numServos - 1 downto 0);
+	signal s_dutycycle       : INT_ARRAY(numServos_c - 1 downto 0);
 
 	-- The tick signal generated from the prescaler. Drives the counters.
 	signal s_TICK            : std_logic;
@@ -248,7 +245,7 @@ architecture UARTCommunicator_TB_a of UARTCommunicator_TB is
 	signal s_step            : std_logic;
 
 	-- The output value from the counters. Drives the look up tables.
-	signal s_counter         : INT_ARRAY(numServos - 1 downto 0);
+	signal s_counter         : INT_ARRAY(numServos_c - 1 downto 0);
 
 
 	signal s_RX              : std_logic;
@@ -322,11 +319,9 @@ begin
 
 
     uartCommunicator: entity work.UARTCommunicator(UARTCommunicator_a) generic map (BAUD_RATE_g        => 115200,
-                                                                      CLOCK_FREQUENCY_g  => 50000000,
-                                                                      numServos_g        => numServos,
-                                                                      bufferSize_g       => 255
-                                                                     )
-                                                        port map    (CLK               => CLOCK_50,
+                                                                                    CLOCK_FREQUENCY_g  => 50000000
+                                                                                   )
+                                                        port map    ( CLK               => CLOCK_50,
                                                                       RESET_n           => s_RESET,
 
                                                                       activateServo     => s_activateServo,

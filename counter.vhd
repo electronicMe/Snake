@@ -17,7 +17,7 @@ entity counter is
 
 	generic (
 		-- maximum count value
-		maxValue_g     : integer
+		maxValue_g   : integer
 	);
 	port(
 		CLK          : in  std_logic;

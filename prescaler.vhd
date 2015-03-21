@@ -15,12 +15,12 @@ use IEEE.numeric_std.ALL;
 
 entity prescaler is
 generic (
-	scale : natural
+	scale   : natural
 );
 port (
-	CLK       : in std_logic;
-	RESET_n   : in std_logic;
-	TICK      : out std_logic
+	CLK     : in std_logic;
+	RESET_n : in std_logic;
+	TICK    : out std_logic
 );
 end prescaler;
 
@@ -34,7 +34,7 @@ begin
 
 	p_prescaler: process(CLK, RESET_n)
 	begin
-	
+
 		if (RESET_n = '0') then
 			TICK    <= '0';
 			counter <= scale;
@@ -47,9 +47,7 @@ begin
 				counter <= counter - 1;
 			end if;
 		end if;
-	
+
 	end process;
 
 end architecture;
-
-
