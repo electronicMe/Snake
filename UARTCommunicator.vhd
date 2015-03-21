@@ -51,10 +51,10 @@ port (
 	reset             : out   std_logic;
 
 	TX                : out   std_logic;
-	RX                : in    std_logic;
+	RX                : in    std_logic
 
-	debug             : out   std_logic_vector(7 downto 0);
-	debug2            : out   std_logic
+	--debug             : out   std_logic_vector(7 downto 0);
+	--debug2            : out   std_logic
 );
 
 end UARTCommunicator;
@@ -124,6 +124,8 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	--========================================================================--
 	-- SIGNALS                                                                --
 	--========================================================================--
+
+	signal RESET_nn                 : std_logic;
 
 	signal s_runMode                : runMode        := runMode_stopped;
 	signal s_commandMode            : commandMode    := commandMode_home;
@@ -335,18 +337,30 @@ architecture UARTCommunicator_a of UARTCommunicator is
 
 
 
-	---------
-	function stringToInt16 (str: string(1 to 2)) return integer is
-		variable valueVector : std_logic_vector(16 downto 0);
-		variable byte1       : std_logic_vector(8 downto 0);
-		variable byte2       : std_logic_vector(8 downto 0);
+	-------------------------------------------------------------- stringToInt16
+	function stringToInt16 (str: string(1 to 2);
+                            min: integer;
+                            max: integer
+                           ) return integer is
+		variable valueVector : std_logic_vector(15 downto 0);
+		variable byte1       : std_logic_vector(7 downto 0);
+		variable byte2       : std_logic_vector(7 downto 0);
+        variable value       : integer;
 	begin
 		byte1 := std_logic_vector(to_unsigned(CHARACTER'POS(str(1)), 8));
 		byte2 := std_logic_vector(to_unsigned(CHARACTER'POS(str(2)), 8));
 
 		valueVector := byte1 & byte2;
 
-		return to_integer(unsigned(valueVector));
+		value := to_integer(signed(valueVector));
+
+        if (value < min) then
+            return min;
+        elsif (value > max) then
+            return max;
+        else
+            return value;
+        end if;
 	end stringToInt16;
 
 
@@ -361,33 +375,17 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	--========================================================================--
 
 
-	------------------------------------------------------------setActivateServo
-	procedure setActivateServo ( constant index    : in integer range 0 to (numServos_g - 1);
-								  constant newValue : in std_logic
-								) is
-	begin
-		activateServo(index) <= newValue;
-	end procedure setActivateServo;
-
-
-	----------------------------------------------------------setActivateCounter
-	procedure setActivateCounter ( constant index    : in integer range 0 to (numServos_g - 1);
-									constant newValue : in std_logic
-								  ) is
-	begin
-		activateCounter(index) <= newValue;
-	end procedure setActivateCounter;
-
-
 	-------------------------------------------------------------------setString
 	procedure setString ( variable theString : inout string;
-						   constant newValue  : in    string
+						  constant newValue  : in    string
 						 ) is
 	begin
-		theString := (others => NUL);
-
-		for i in 1 to newValue'length loop
-			theString(i) := newValue(i);
+		for i in 1 to theString'length loop
+			if (i < newValue'length) then
+				theString(i) := newValue(i);
+			else
+				theString(i) := NUL;
+			end if;
 		end loop;
 	end procedure setString;
 
@@ -461,13 +459,17 @@ architecture UARTCommunicator_a of UARTCommunicator is
 	---------------------------------------------------------------answerCommand
 	-- This procedure should only be called by the p_commandProcessor process
 	-- to send an aswer of a command
-	procedure answerCommand ( constant answer : in string) is
+	procedure answerCommand ( constant answer : in    string;
+							  signal   outb   : inout buffer_t;
+							  signal   rts    : out   std_logic;
+							  signal   cp     : out   std_logic
+							) is
 		variable data : string(1 to bufferSize_g) := (others => NUL);
 	begin
 		setString(data, CR & LF & answer & CR & LF & '>');
-		writeBuffer(outBuffer, data);
-		readyToSend      <= '1';
-		commandProcessed <= '1';
+		writeBuffer(outb, data);
+		rts <= '1';
+		cp  <= '1';
 	end procedure answerCommand;
 
 
@@ -485,7 +487,7 @@ architecture UARTCommunicator_a of UARTCommunicator is
 
 
 	------------------------------------------------------------------parseInput
-	procedure parseInput( signal input   : in string;
+	procedure parseInput( signal   input   : in string;
 						  variable command : out command_t
 						) is
 		variable stringBuffer : string(1 to bufferSize_g) := (others => NUL);
@@ -497,56 +499,40 @@ architecture UARTCommunicator_a of UARTCommunicator is
 
 		-- get command from input
 		commandLoop: for i in 1 to input'length loop
-			-- loop until space
+			-- loop until space or NUL character
 			exit commandLoop when (input(i) = ' ');
+            exit commandLoop when (input(i) = NUL);
 
 			stringBuffer(i) := input(i);
 			commandLength := i;
 		end loop;
 
 		command.command := stringBuffer;
-		stringBuffer    := (others => NUL);
-
 
 
 		-- get id from input
-		idLoop: for i in 1 to input'length loop
-			-- loop until space
-			exit idLoop when (input(i + commandLength + 2) = ' ');
-
-			stringBuffer(i) := input(i + commandLength + 2);
-			idLength  := i;
-		end loop;
-
-		command.id   := stringToInt(stringBuffer);
-		stringBuffer := (others => NUL);
-
+		command.id := stringToInt16(input(commandLength + 2 to commandLength + 3), 0, numServos_g - 1);
 
 
 		-- get value from input
-		valueLoop: for i in 1 to input'length loop
-			-- loop until space
-			exit valueLoop when (input(i) = ' ');
+		command.value := stringToInt16(input(commandLength + 5 to commandLength + 6), INTEGER'low, INTEGER'high);
 
-			stringBuffer(i) := input(i + commandLength + idLength + 4);
-			idLength  := i;
-		end loop;
-
-		command.value := stringToInt(stringBuffer);
 	end procedure parseInput;
 
 
 
 begin
 
+	RESET_nn <= NOT RESET_n;
+
 	--========================================================================--
 	-- SUPPORTING COMPONENTS                                                  --
 	--========================================================================--
 
-	uart: entity work.UART(RTL) generic map (BAUD_RATE           => BAUD_RATE_g,
+	uart: entity work.UART(RTL) generic map (  BAUD_RATE           => BAUD_RATE_g,
 											   CLOCK_FREQUENCY     => CLOCK_FREQUENCY_g)
-								 port map    (CLOCK               => CLK,
-											   RESET               => NOT RESET_n,
+								 port map    ( CLOCK               => CLK,
+											   RESET               => RESET_nn,
 											   DATA_STREAM_IN      => DATA_STREAM_IN,
 											   DATA_STREAM_IN_STB  => DATA_STREAM_IN_STB,
 											   DATA_STREAM_IN_ACK  => DATA_STREAM_IN_ACK,
@@ -570,25 +556,25 @@ begin
 
 		case s_runMode is
 			when runMode_stopped    => --------------------------runMode_stopped
-				for i in 0 to (numServos_g - 1) loop
-					setActivateServo  ( i, '1' );
-					setActivateCounter( i, '0' );
-				end loop;
+				--for i in 0 to (numServos_g - 1) loop
+                --    activateServo(i) <= '1';
+                --    activateCounter(i) <= '0';
+                --end loop;
 			when runMode_centering  => ------------------------runMode_centering
-				for i in 0 to (numServos_g - 1) loop
-					setActivateServo  ( i, '1' );
-					setActivateCounter( i, '0' );
-				end loop;
+				--for i in 0 to (numServos_g - 1) loop
+                --    activateServo(i) <= '1';
+                --    activateCounter(i) <= '0';
+				--end loop;
 			when runMode_singleStep => -----------------------runMode_singleStep
-				for i in 0 to (numServos_g - 1) loop
-					setActivateServo  ( i, '1' );
-					setActivateCounter( i, '0' );
-				end loop;
+				--for i in 0 to (numServos_g - 1) loop
+                --    activateServo(i) <= '1';
+                --    activateCounter(i) <= '0';
+				--end loop;
 			when runMode_running    => --------------------------runMode_running
-				for i in 0 to (numServos_g - 1) loop
-					setActivateServo  ( i, '1' );
-					setActivateCounter( i, '1' );
-				end loop;
+				--for i in 0 to (numServos_g - 1) loop
+                --    activateServo(i) <= '1';
+                --    activateCounter(i) <= '1';
+                --end loop;
 		end case; ------------------------------------------------------end case
 
 	end process;
@@ -609,7 +595,6 @@ begin
 			resetBuffer(inBuffer);
 			DATA_STREAM_OUT_ACK <= '0';
 			processInBuffer     <= '0';
-			--debug               <= '0';
 		elsif rising_edge(CLK) then
 
 			DATA_STREAM_OUT_ACK <= '0';
@@ -620,22 +605,20 @@ begin
 				resetBuffer(inBuffer);
 			elsif ((DATA_STREAM_OUT_STB = '1') AND (DATA_STREAM_OUT_ACK = '0')) then
 
-				-- Tell uart we finished receiving the character
-				DATA_STREAM_OUT_ACK <= '1';
-
 				-- Receive character
 				receivedCharacter := CONV(DATA_STREAM_OUT);
+
+				-- Tell uart we finished receiving the character
+				DATA_STREAM_OUT_ACK <= '1';
 
 				-- Check if character is command terminator
 				if (receivedCharacter = commandTerminator) then
 					-- Finished receiving command. Trigger command processing
 					processInBuffer <= '1';
-					--debug           <= '1';
-				else
+                else
 					-- Command not finished yet. Write character into input buffer.
 					appendCharacter(inBuffer, receivedCharacter);
 				end if;
-
 			end if;
 		end if;
 
@@ -699,14 +682,22 @@ begin
 	begin
 
 		if (RESET_n = '0') then
-			resetBuffer(outBuffer);
+
+            -- Reset supporting signals to standard values
+            resetBuffer(outBuffer);
 			readyToSend               <= '0';
 			lastSentInBufferPointer   <=  1;
 			s_commandProcessWasReset  <= '1';
 			reset                     <= '0';
 			step                      <= '0';
-			debug2                    <= '0';
-			debug <= (others => '0');
+
+            -- Reset robot command signals to standard values
+            activateServo             <= (others => '0');
+            activateCounter           <= (others => '0');
+            centerCorrections         <= (others =>  0 );
+            initCounterVals           <= (others =>  0 );
+            damping                   <= (others =>  0 );
+
 		elsif rising_edge(CLK) then
 			readyToSend      <= '0';
 			commandProcessed <= '0';
@@ -716,7 +707,7 @@ begin
 			-- Send Startup Message if process was reset recently
 			if (s_commandProcessWasReset = '1') then
 				s_commandProcessWasReset <= '0';
-				setString(data, "This program was written by Sebastian Mach - TGM 2014-2015 5AHEL - All Rights Reserved" & CR & LF & '>');
+				--setString(data, "This program was written by Sebastian Mach - TGM 2014-2015 5AHEL - All Rights Reserved" & CR & LF & '>');
 				writeBuffer(outBuffer, data);
 				readyToSend      <= '1';
 			end if;
@@ -724,65 +715,70 @@ begin
 
 			if (processInBuffer = '1') then
 
+                -- only for debugging purposes. remove when synthesizing for FPGA
+                -- write(OUTPUT, "==================================================" & CR & "Received Command: " & command.command & " id: " & integer'image(command.id) & " value: " & integer'image(command.value) & CR);
+
+
 				-- process new command
-				debug(0) <= '1';
+				--debug(0) <= '1';
 				parseInput(inBuffer.bufferContent, command);
-				debug(7) <= '1';
+				--debug(7) <= '1';
 				---------------------------------------------------------- hello
 				if compareStrings(command.command, "hello") then
-					answerCommand("Hello there :D");
+					answerCommand("Hello there :D", outBuffer ,readyToSend, commandProcessed);
 
 				----------------------------------------------------------- ping
 				elsif compareStrings(command.command, "ping") then
-					answerCommand("pong");
-					debug2 <= '1';
+					answerCommand("pong", outBuffer, readyToSend, commandProcessed);
+					--debug2 <= '1';
 
 				----------------------------------------------------------- help
 				elsif compareStrings(command.command, "help") then
-					answerCommand("read the documentation for more information");
+					answerCommand("read the documentation for more information", outBuffer, readyToSend, commandProcessed);
 
 				----------------------------------------------------------- home
 				elsif compareStrings(command.command, "home") then
 					s_commandMode <= commandMode_home;
-					answerCommand("new mode: home");
+					answerCommand("new mode: home", outBuffer, readyToSend, commandProcessed);
 
 				------------------------------------------------------------ set
 				elsif compareStrings(command.command, "set") then
 					s_commandMode <= commandMode_set;
-					answerCommand("new mode: set");
+					answerCommand("new mode: set", outBuffer, readyToSend, commandProcessed);
 
 				------------------------------------------------------------ get
 				elsif compareStrings(command.command, "get") then
 					s_commandMode <= commandMode_get;
-					answerCommand("new mode: get");
+					answerCommand("new mode: get", outBuffer, readyToSend, commandProcessed);
 
 				---------------------------------------------------------- reset
 				elsif compareStrings(command.command, "reset") then
 					reset <= '1';
-					answerCommand("reset now");
+					answerCommand("reset now", outBuffer, readyToSend, commandProcessed);
 
 				----------------------------------------------------------- tick
 				elsif compareStrings(command.command, "tick") then
 					step <= '1';
-					answerCommand("tick now");
+					answerCommand("tick now", outBuffer, readyToSend, commandProcessed);
 
+                ----------------------------------------------------------- test
 				elsif compareStrings(command.command, "test") then
-					answerCommand("id = " & integer'image(command.id) & " value = " & integer'image(command.value));
+					answerCommand("id = " & integer'image(command.id) & " value = " & integer'image(command.value), outBuffer, readyToSend, commandProcessed);
 
 				--========================================================== get
 				elsif (s_commandMode = commandMode_get) then
 
 					---------------------------------------------------- runMode
 					if compareStrings(command.command, "runMode") then
-						answerCommand("runMode = " & stringFromRunMode(s_runMode));
+						answerCommand("runMode = " & stringFromRunMode(s_runMode), outBuffer, readyToSend, commandProcessed);
 
 					------------------------------------------------------ servo
 					elsif compareStrings(command.command, "servo") then
 
 						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
-							answerCommand("get servo: invalid id");
+							answerCommand("get servo: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
-							answerCommand("activateServo " & integer'image(command.id) & " = ?");
+							answerCommand("activateServo " & integer'image(command.id) & " = ?", outBuffer, readyToSend, commandProcessed);
 						end if;
 
 
@@ -790,9 +786,9 @@ begin
 					elsif compareStrings(command.command, "counter") then
 
 						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
-							answerCommand("get counter: invalid id");
+							answerCommand("get counter: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
-							answerCommand("activateCounter " & integer'image(command.id) & " = ?");
+							answerCommand("activateCounter " & integer'image(command.id) & " = ?", outBuffer, readyToSend, commandProcessed);
 						end if;
 
 
@@ -801,9 +797,9 @@ begin
 					elsif compareStrings(command.command, "centerCorrection") then
 
 						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
-							answerCommand("get centerCorrection: invalid id");
+							answerCommand("get centerCorrection: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
-							answerCommand("centerCorrection " & integer'image(command.id) & " = " & integer'image(centerCorrections(command.id)));
+							answerCommand("centerCorrection " & integer'image(command.id) & " = " & integer'image(centerCorrections(command.id)), outBuffer, readyToSend, commandProcessed);
 						end if;
 
 
@@ -811,9 +807,9 @@ begin
 					elsif compareStrings(command.command, "initCounterValue") then
 
 						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
-							answerCommand("get initCounterValue: invalid id");
+							answerCommand("get initCounterValue: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
-							answerCommand("get initCounterValue: not implemented yet");
+							answerCommand("get initCounterValue: not implemented yet", outBuffer, readyToSend, commandProcessed);
 						end if;
 
 
@@ -821,9 +817,9 @@ begin
 					elsif compareStrings(command.command, "damping") then
 
 						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
-							answerCommand("get damping: invalid id");
+							answerCommand("get damping: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
-							answerCommand("get damping: not implemented yet");
+							answerCommand("get damping: not implemented yet", outBuffer, readyToSend, commandProcessed);
 						end if;
 
 
@@ -831,9 +827,9 @@ begin
 					elsif compareStrings(command.command, "LUT") then
 
 						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
-							answerCommand("get LUT: invalid id");
+							answerCommand("get LUT: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
-							answerCommand("get LUT: not implemented yet");
+							answerCommand("get LUT: not implemented yet", outBuffer, readyToSend, commandProcessed);
 						end if;
 
 
@@ -841,14 +837,14 @@ begin
 					elsif compareStrings(command.command, "dutycycle") then
 
 						if ((command.id < 0) OR (command.id > numServos_g - 1)) then
-							answerCommand("get dutycycle: invalid id");
+							answerCommand("get dutycycle: invalid id", outBuffer, readyToSend, commandProcessed);
 						else
-							answerCommand("get dutycycle: not implemented yet");
+							answerCommand("get dutycycle: not implemented yet", outBuffer, readyToSend, commandProcessed);
 						end if;
 
 
 					else
-						answerCommand("Unknown Command");
+						answerCommand("Unknown Command", outBuffer, readyToSend, commandProcessed);
 
 					end if;
 
@@ -857,47 +853,58 @@ begin
 
 					---------------------------------------------------- runMode
 					if compareStrings(command.command, "runMode") then
-						answerCommand("set runMode: not implemented yet");
+						answerCommand("set runMode: not implemented yet", outBuffer, readyToSend, commandProcessed);
 
 
 					------------------------------------------------------ servo
 					elsif compareStrings(command.command, "servo") then
-						answerCommand("set servo: not implemented yet");
+
+                        if ((command.id < 0) OR (command.id > numServos_g - 1)) then
+							answerCommand("set servo: invalid id", outBuffer, readyToSend, commandProcessed);
+						else
+                            if (command.value = 0) then
+                                activateServo(command.id) <= '0';
+                            else
+                                activateServo(command.id) <= '1';
+                            end if;
+							answerCommand("OK", outBuffer, readyToSend, commandProcessed);
+						end if;
+
 
 
 					---------------------------------------------------- counter
 					elsif compareStrings(command.command, "counter") then
-						answerCommand("set counter: not implemented yet");
+						answerCommand("set counter: not implemented yet", outBuffer, readyToSend, commandProcessed);
 
 
 					------------------------------------------- centerCorrection
 					elsif compareStrings(command.command, "centerCorrection") then
-						answerCommand("set centerCorrection: not implemented yet");
+						answerCommand("set centerCorrection: not implemented yet", outBuffer, readyToSend, commandProcessed);
 
 
 					------------------------------------------- initCounterValue
 					elsif compareStrings(command.command, "initCounterValue") then
-						answerCommand("set initCounterValue: not implemented yet");
+						answerCommand("set initCounterValue: not implemented yet", outBuffer, readyToSend, commandProcessed);
 
 
 					---------------------------------------------------- damping
 					elsif compareStrings(command.command, "damping") then
-						answerCommand("set damping: not implemented yet");
+						answerCommand("set damping: not implemented yet", outBuffer, readyToSend, commandProcessed);
 
 
 					-------------------------------------------------- dutycycle
 					elsif compareStrings(command.command, "dutycycle") then
-						answerCommand("set dutycycle: not implemented yet");
+						answerCommand("set dutycycle: not implemented yet", outBuffer, readyToSend, commandProcessed);
 
 
 					else
-						answerCommand("Unknown Command");
+						answerCommand("Unknown Command", outBuffer, readyToSend, commandProcessed);
 
 					end if;
 
 				end if;
 
-			elsif (inBuffer.bufferPointer /= lastSentInBufferPointer) then
+			elsif ((inBuffer.bufferPointer /= lastSentInBufferPointer) AND (inBuffer.bufferPointer - 1 > 0)) then
 
 				-- echo last received character
 

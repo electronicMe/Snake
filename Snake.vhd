@@ -39,8 +39,10 @@ entity Snake is
 
 	-- ports for DE0-Nano
 	port (
+		-- 50 MHz Clock Signal (20e-9 sec)
 		CLOCK_50 : IN    std_logic;
 		LED      : OUT   std_logic_vector(7  downto 0);
+		-- See the project documentation for more details about the pins
 		GPIO_0   : INOUT std_logic_vector(33 downto 0);
 		GPIO_1   : INOUT std_logic_vector(33 downto 0);
 
@@ -306,12 +308,16 @@ begin
 
 	s_RESET    <= NOT (SW(2) OR (NOT KEY(0)) OR s_reset2);
 
-	--LED(2) <= '0';
-	--LED(3) <= (SW(0) XOR (s_pwmSignal(0) AND s_activateServo(0)));    -- S1
-	--LED(4) <= (SW(0) XOR (s_pwmSignal(1) AND s_activateServo(1)));    -- S2
-	--LED(5) <= '1';
-	--LED(6) <= s_RESET;
-	--LED(7) <= NOT s_RESET;
+	
+    LED(0) <= s_activateServo(0);
+    LED(1) <= s_activateServo(1);
+    LED(2) <= s_activateServo(2);
+    LED(3) <= s_activateServo(3);
+    LED(4) <= s_activateServo(4);
+    LED(5) <= s_activateServo(5);
+    LED(6) <= s_activateServo(6);
+    LED(7) <= s_activateServo(7);
+
 
 
 
@@ -367,10 +373,10 @@ begin
 																					  reset             => s_reset2,
 
 																					  RX                => RX,
-																					  TX                => TX,
+																					  TX                => TX
 
-																					  debug             => LED,
-																					  debug2            => GPIO_1(7)
+																					  --debug             => LED,
+																					  --debug2            => GPIO_1(7)
 																					 );
 
 
