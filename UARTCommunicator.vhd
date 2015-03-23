@@ -397,7 +397,7 @@ begin
 			-- Send Startup Message if process was reset recently
 			if (s_commandProcessWasReset = '1') then
 				s_commandProcessWasReset <= '0';
-				--setString(data, "This program was written by Sebastian Mach - TGM 2014-2015 5AHEL - All Rights Reserved" & CR & LF & '>');
+				setString(data, "This program was written by Sebastian Mach - TGM 2014-2015 5AHEL - All Rights Reserved" & CR & LF & '>');
 				writeBuffer(outBuffer, data);
 				readyToSend      <= '1';
 			end if;

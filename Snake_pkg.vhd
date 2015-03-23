@@ -11,6 +11,6 @@
 package Snake_pkg is
 
     constant numServos_c  : integer  := 26;
-    constant bufferSize_c : positive := 10;
+    constant bufferSize_c : positive := 128;
 
 end Snake_pkg;

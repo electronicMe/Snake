@@ -230,8 +230,8 @@ package body UART_pkg is
 		variable byte2       : std_logic_vector(7 downto 0);
         variable value       : integer;
 	begin
-		byte1 := std_logic_vector(to_unsigned(CHARACTER'POS(str(1)), 8));
-		byte2 := std_logic_vector(to_unsigned(CHARACTER'POS(str(2)), 8));
+		byte1 := std_logic_vector(to_unsigned(CHARACTER'POS(str(1)) - 1, 8));
+		byte2 := std_logic_vector(to_unsigned(CHARACTER'POS(str(2)) - 1, 8));
 
 		valueVector := byte1 & byte2;
 
